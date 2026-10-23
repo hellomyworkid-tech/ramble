@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ramble</title>
+<style>
+:root { --bg:#ffffff; --fg:#1c1c1e; --muted:#6c6c70; --line:#e5e5ea; --accent:#d9480f; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#000000; --fg:#f2f2f7; --muted:#a1a1a6; --line:#2c2c2e; --accent:#ff8a4c; }
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+nav { display:flex; gap:16px; font-size:14px; margin-bottom:24px; }
+a { color: var(--accent); }
+h1 { font-size: 28px; line-height:1.25; margin: 0 0 8px; }
+h2 { font-size: 19px; margin: 32px 0 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+p, li { color: var(--fg); }
+.muted { color: var(--muted); font-size: 14px; }
+ul { padding-left: 1.2em; }
+li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+<nav><a href="en.html">Ramble</a><a href="privacy-en.html">Privacy</a><a href="support-en.html">Support</a><a href="index.html">中文</a></nav>
+
+<h1>Ramble</h1>
+<p>Say it once and it's kept. AI turns what you say into to-dos, ledger entries, bill and expiry reminders, and notes.</p>
+<ul>
+<li>Say "pay rent 3,200 tomorrow at 3pm" and get a to-do, a bill and an expense.</li>
+<li>Works fully offline: speech recognition and AI tidying can both run on your iPhone.</li>
+<li>Your data stays on your iPhone and in your own iCloud. We have no servers.</li>
+</ul>
+<p>Free and open source (MIT License): <a href="https://github.com/hellomyworkid-tech/Ramble">github.com/hellomyworkid-tech/Ramble</a></p>
+<p class="muted"><a href="privacy-en.html">Privacy Policy</a> · <a href="support-en.html">Support</a></p>
+
+</main>
+</body>
+</html>
