@@ -1,0 +1,122 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "${applicationName}这个月花了多少" : {
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "How much did I spend this month in ${applicationName}",
+              "Check ${period} spending in ${applicationName}",
+              "${applicationName} spending ${period}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}这个月花了多少",
+              "用${applicationName}查${period}支出",
+              "${applicationName}${period}花了多少"
+            ]
+          }
+        }
+      }
+    },
+    "在${applicationName}添加待办" : {
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Add a to-do in ${applicationName}",
+              "New ${applicationName} to-do"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在${applicationName}添加待办",
+              "用${applicationName}加个待办"
+            ]
+          }
+        }
+      }
+    },
+    "用${applicationName}记一笔" : {
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Log it in ${applicationName}",
+              "Capture in ${applicationName}",
+              "Note this in ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "用${applicationName}记一笔",
+              "${applicationName}记一笔",
+              "在${applicationName}记一下"
+            ]
+          }
+        }
+      }
+    },
+    "看${applicationName}${kind}" : {
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Show ${applicationName} ${kind}",
+              "Open ${applicationName} ${kind}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "看${applicationName}${kind}",
+              "打开${applicationName}${kind}"
+            ]
+          }
+        }
+      }
+    },
+    "问${applicationName}" : {
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Ask ${applicationName}",
+              "Ask ${applicationName} a question",
+              "Look something up in ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "问${applicationName}",
+              "问问${applicationName}",
+              "用${applicationName}查一下"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
