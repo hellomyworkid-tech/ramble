@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ramble Privacy Policy</title>
+<style>
+:root { --bg:#ffffff; --fg:#1c1c1e; --muted:#6c6c70; --line:#e5e5ea; --accent:#d9480f; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#000000; --fg:#f2f2f7; --muted:#a1a1a6; --line:#2c2c2e; --accent:#ff8a4c; }
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+nav { display:flex; gap:16px; font-size:14px; margin-bottom:24px; }
+a { color: var(--accent); }
+h1 { font-size: 28px; line-height:1.25; margin: 0 0 8px; }
+h2 { font-size: 19px; margin: 32px 0 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+p, li { color: var(--fg); }
+.muted { color: var(--muted); font-size: 14px; }
+ul { padding-left: 1.2em; }
+li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+<nav><a href="en.html">Ramble</a><a href="privacy-en.html">Privacy</a><a href="support-en.html">Support</a><a href="index.html">中文</a></nav>
+<h1>Ramble Privacy Policy</h1>
+<p>Effective date: October 15, 2026</p>
+<p>Ramble (随口记 in Chinese) is an iPhone app for keeping to-dos, expenses and notes by talking or typing. We, the developer of Ramble, run no servers and collect none of your data. This policy explains where your data is kept and when it leaves your iPhone.</p>
+<h2>In short</h2>
+<ul>
+<li>Your to-dos, ledger, bills, expiry reminders, notes and attachments are stored on your iPhone and, if you turn on iCloud Sync, in your own iCloud account. We can't see any of it.</li>
+<li>We don't collect personal information, run analytics, show ads, track you, or have an account system.</li>
+<li>Text is sent to an AI provider only if you set up cloud AI yourself, with your own API key, and agree to it.</li>
+</ul>
+<h2>Where your data is kept</h2>
+<ul>
+<li><strong>Your iPhone</strong>: all records are kept in the app's own storage, protected by iOS.</li>
+<li><strong>Your iCloud (optional)</strong>: if you turn on Settings › iCloud Sync, records sync through Apple's CloudKit to your private iCloud database, readable only by devices signed in to the same Apple Account. Apple keeps this data under its privacy policy; we have no access to it. You can turn sync off at any time.</li>
+<li><strong>Files you export</strong>: you decide where full backups and CSV files are saved.</li>
+</ul>
+<h2>Voice, photos and AI</h2>
+<ul>
+<li><strong>Speech recognition</strong>: the iPhone's built-in recognizer, or the Qwen3-ASR model if you download it, runs on your iPhone. Recordings are never uploaded or kept.</li>
+<li><strong>Photos and files</strong>: only photos and files you pick or take are read, and text recognition happens on your iPhone.</li>
+<li><strong>On-device AI</strong>: Apple Intelligence and any open-source model you download run on your iPhone; the text never leaves it.</li>
+<li><strong>Cloud AI (optional, off unless you set it up)</strong>: if you enter your own API key for Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google) or a custom endpoint in AI Tidying, and agree the first time it's needed, text that needs cloud processing is sent with your key directly to that provider, never through us. Only what's being processed is sent: a capture, a note being tidied, a question you ask (plus a few related note entries when it's about your notes), the totals and category amounts of a weekly or monthly report, and text recognized from files (with ID card numbers removed on your iPhone first). Original files are sent only after you confirm each time. How the provider handles this is governed by your agreement with them and their privacy policy. The app asks again if you switch providers, and you can turn cloud AI off in Settings at any time.</li>
+<li><strong>API keys</strong> are stored only in this device's keychain; they don't sync and aren't in backups.</li>
+</ul>
+<h2>Network services the app uses</h2>
+<p>Besides any cloud AI you set up, Ramble only contacts:</p>
+<ul>
+<li><strong>ExchangeRate-API</strong> (open.er-api.com): about once a day, for exchange rates. The request contains only your base currency code.</li>
+<li><strong>Hugging Face</strong> (huggingface.co): only when you choose to download an open-source model, to list and download its files.</li>
+<li><strong>Apple services</strong>: iCloud Sync, notifications, and the language assets the system's speech recognition needs.</li>
+</ul>
+<p>None of these requests contain your records. As with any network request, the server sees your IP address.</p>
+<h2>Permissions</h2>
+<ul>
+<li><strong>Microphone and speech recognition</strong>: used only while you're dictating.</li>
+<li><strong>Camera</strong>: used only when you photograph a receipt or a document.</li>
+<li><strong>Photos (add only)</strong>: used only when you tap Save to Photos, to put a photo from your notes into your library. The app can't see what's in your library. Adding photos uses the system photo picker, so the app only gets the ones you choose.</li>
+<li><strong>Face ID / Touch ID</strong>: iOS does the check; the app only learns whether it passed and never sees biometric data.</li>
+<li><strong>Notifications</strong>: for your reminders, all scheduled on your iPhone.</li>
+<li><strong>Local network</strong>: used only if you point the custom AI endpoint at an address on your local network.</li>
+</ul>
+<h2>Deleting your data</h2>
+<ul>
+<li>Delete records in the app, or delete the app, to remove the data on your iPhone.</li>
+<li>If you used iCloud Sync, delete Ramble's iCloud data in Settings › [your name] › iCloud › Manage Account Storage.</li>
+<li>For anything already sent to a cloud AI provider, use that provider's own deletion process.</li>
+</ul>
+<h2>Children</h2>
+<p>Ramble is not directed at children under 13. We don't knowingly collect anyone's personal information.</p>
+<h2>Changes</h2>
+<p>If this policy changes, we'll update this page and its effective date, and mention important changes in the app's release notes.</p>
+<h2>Contact</h2>
+<p>Questions about this policy: email <a href="mailto:hellolink@icloud.com.">hellolink@icloud.com.</a></p>
+</main>
+</body>
+</html>
