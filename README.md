@@ -83,7 +83,7 @@ Debug 版的启动参数：`-sampleData`（载入示例数据）、`-startTab le
 | `RambleWidgets`、`RambleShared` | 小组件，以及 App 和小组件共用的代码 |
 | `Vendor` | 打了补丁的 mlx-swift-lm 和 mlx-audio-swift（补丁见各自的 `RAMBLE-PATCHES.md`） |
 | `docs` | 需求和设计说明（中文）、App Store 资料、截图 |
-| `website` | 隐私政策和支持页的生成脚本 |
+| `website` | 隐私政策和支持页的生成脚本（生成的网页发布在 `gh-pages` 分支） |
 | `scripts` | `make_licenses.py`：生成 App 里的「开源许可」页 |
 
 ## 许可 License
