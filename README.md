@@ -5,10 +5,10 @@
 Say it once and it's kept. Ramble turns what you say into to-dos, ledger entries, bill and expiry reminders, and notes. Speech recognition and AI tidying can both run entirely on your iPhone.
 
 <p>
-<img src="docs/screenshots/zh-Hans/1-today.png" width="200" alt="今天">
-<img src="docs/screenshots/zh-Hans/2-ledger.png" width="200" alt="账本">
-<img src="docs/screenshots/zh-Hans/4-notes.png" width="200" alt="笔记">
-<img src="docs/screenshots/en/3-reminders.png" width="200" alt="Reminders">
+<img src="docs/screenshots/6.9-zh-Hans/1-today.png" width="200" alt="今天">
+<img src="docs/screenshots/6.9-zh-Hans/2-ledger.png" width="200" alt="账本">
+<img src="docs/screenshots/6.9-zh-Hans/4-notes.png" width="200" alt="笔记">
+<img src="docs/screenshots/6.9-en/3-reminders.png" width="200" alt="Reminders">
 </p>
 
 完全免费、没有内购和广告，以 MIT 许可开源。Free, no in-app purchases or ads, open source under the MIT License.

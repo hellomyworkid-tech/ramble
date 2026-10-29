@@ -214,6 +214,13 @@ enum SeedData {
         passport.renewalMonths = 120
         [insurance, passport].forEach(context.insert)
 
+        // Money owed either way, for the Today tile and the 应收应付 list.
+        let lent = Outstanding(direction: .receivable, title: String(localized: "借款"), counterparty: String(localized: "张三"),
+                               amount: 2000, currencyCode: currency, dueDate: day(20))
+        let labour = Outstanding(direction: .payable, title: String(localized: "瓷砖工钱"), counterparty: String(localized: "装修师傅"),
+                                 amount: 3000, currencyCode: currency, dueDate: day(10))
+        [lent, labour].forEach(context.insert)
+
         try? context.save()
     }
 

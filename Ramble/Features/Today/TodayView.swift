@@ -14,10 +14,9 @@ struct TodayView: View {
     @Query private var budgets: [Budget]
 
     @State private var editingTask: TaskItem?
-    @State private var editingBill: Bill?
-    @State private var editingExpiry: ExpiryItem?
-    @State private var payingBill: Bill?
     @State private var showSettings = false
+    @State private var showsOutstanding = false
+    @Query private var outstandings: [Outstanding]
 
     init(selection: Binding<AppTab>) {
         _selection = selection
@@ -28,15 +27,25 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             List {
+                // The whole day at a glance, above the fold: each tile opens its full list.
                 Section {
                     AskEntry { router.ask() }
                         .padding(.bottom, 2)
-                    HStack(spacing: 10) {
-                        SummaryTile(symbol: "checkmark", color: ModuleColor.tasks, value: "\(todayTasks.count)", title: "待办")
-                        SummaryTile(symbol: "creditcard", color: ModuleColor.money,
-                                    value: monthExpense.money(baseCurrency, wholeNumbers: true), title: "本月支出")
-                        SummaryTile(symbol: "calendar", color: ModuleColor.bills, value: "\(billsThisWeek.count)", title: "7 天内账单")
+                    Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                        GridRow {
+                            tasksTile
+                            spendingTile
+                        }
+                        GridRow {
+                            outstandingTile
+                            upcomingTile
+                        }
                     }
+                    HStack(spacing: 10) {
+                        reviewChip(.week)
+                        reviewChip(.month)
+                    }
+                    .padding(.top, 10)
                 }
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 10, trailing: 0))
                 .listRowBackground(Color.clear)
@@ -47,15 +56,18 @@ struct TodayView: View {
                         Text("今天没有待办，轻松一下")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(todayTasks) { task in
+                        ForEach(todayTasks.prefix(Self.listLimit)) { task in
                             TaskRow(task: task)
                                 .contentShape(.rect)
                                 .onTapGesture { editingTask = task }
                         }
+                        if todayTasks.count > Self.listLimit {
+                            moreRow(todayTasks.count - Self.listLimit) { selection = .tasks }
+                        }
                     }
                 } header: {
                     HStack {
-                        Text("待办")
+                        Text("今天要做")
                         Spacer()
                         Button("全部") { selection = .tasks }
                             .font(.subheadline)
@@ -64,46 +76,6 @@ struct TodayView: View {
                 }
                 .headerProminence(.increased)
 
-                Section {
-                    reviewRow(.week)
-                    reviewRow(.month)
-                } header: {
-                    Text("回顾")
-                }
-                .headerProminence(.increased)
-
-                Section("本月预算") {
-                    budgetCard
-                }
-                .headerProminence(.increased)
-
-                Section("即将到期") {
-                    if upcoming.isEmpty {
-                        Text("近期没有要处理的账单和证件")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(upcoming) { item in
-                        switch item {
-                        case .bill(let bill):
-                            BillRow(bill: bill)
-                                .contentShape(.rect)
-                                .onTapGesture { editingBill = bill }
-                                .swipeActions(edge: .leading) {
-                                    Button("已支付", systemImage: "checkmark") { payingBill = bill }
-                                        .tint(ModuleColor.money)
-                                }
-                                .contextMenu {
-                                    Button("已支付", systemImage: "checkmark.circle") { payingBill = bill }
-                                    Button("编辑", systemImage: "pencil") { editingBill = bill }
-                                }
-                        case .expiry(let expiry):
-                            ExpiryRow(item: expiry)
-                                .contentShape(.rect)
-                                .onTapGesture { editingExpiry = expiry }
-                        }
-                    }
-                }
-                .headerProminence(.increased)
             }
             .navigationTitle("今天")
             .navigationSubtitle(Date.now.formatted(.dateTime.month().day().weekday(.wide)))
@@ -115,104 +87,178 @@ struct TodayView: View {
             .sheet(item: $editingTask) { task in
                 NavigationStack { TaskEditorView(task: task) }
             }
-            .sheet(item: $editingBill) { bill in
-                NavigationStack { BillEditorView(bill: bill) }
-            }
-            .sheet(item: $editingExpiry) { item in
-                NavigationStack { ExpiryEditorView(item: item) }
-            }
-            .sheet(item: $payingBill) { bill in
-                NavigationStack { MarkPaidView(bill: bill) }
-                    .presentationDetents([.medium, .large])
-            }
             .sheet(isPresented: $showSettings) {
                 NavigationStack { SettingsView() }
+            }
+            .navigationDestination(isPresented: $showsOutstanding) {
+                OutstandingListView()
             }
         }
     }
 
-    // MARK: - Review
+    /// Lists on this page stop at three; the rest is a tap away.
+    private static let listLimit = 3
 
-    /// "上周 · 支出 ¥1,900，比前一周多 ¥1,620（+579%）"
-    private func reviewRow(_ kind: PeriodReport.Kind) -> some View {
-        let period = ReportBuilder.defaultPeriod(kind)
-        let previous = PeriodResolver.samePoint(in: ReportBuilder.shifted(period, kind: kind, by: -1), for: period, now: .now)
-        let spent = LedgerSummary.expenses(in: period.interval, context: context)
-        let before = LedgerSummary.expenses(in: previous.interval, context: context)
-        let weekLabel = String(localized: "前一周") + (period.holds(.now) ? String(localized: "同期") : "")
-        let change = QueryRunner.changeSentence(spent, against: before, label: kind == .week ? weekLabel : previous.label)
-        return Button {
-            router.openReport(kind)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: kind == .week ? "calendar.badge.clock" : "chart.bar.xaxis")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(kind == .week ? ModuleColor.tasks : ModuleColor.money, in: .rect(cornerRadius: 8))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(period.label)\(kind.title)")
-                        .foregroundStyle(.primary)
-                    Text(change.map { String(localized: "支出 \(spent.money(baseCurrency))，\($0)") }
-                         ?? String(localized: "支出 \(spent.money(baseCurrency))"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+    private func moreRow(_ count: Int, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text("还有 \(count) 项")
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Budget
+    // MARK: - Tiles
 
-    @ViewBuilder
-    private var budgetCard: some View {
-        let budget = budgets.first { $0.category == nil }
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(monthExpense.money(baseCurrency))
-                    .font(.title2.weight(.bold))
-                    .monospacedDigit()
-                if let budget {
-                    Text("/ \(budget.amount.money(baseCurrency))")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(fraction(of: budget).formatted(.percent.precision(.fractionLength(0))))
-                        .font(.subheadline.weight(.semibold))
+    private var tasksTile: some View {
+        DashboardTile(title: "待办", symbol: "checkmark", color: ModuleColor.tasks) {
+            selection = .tasks
+        } content: {
+            Text("\(todayTasks.count)")
+                .font(.title2.weight(.bold))
+                .monospacedDigit()
+            Group {
+                if overdueCount > 0 {
+                    Text("其中 \(overdueCount) 项已过期")
+                        .foregroundStyle(.red)
+                } else {
+                    Text(todayTasks.first?.title ?? String(localized: "今天没有待办"))
                         .foregroundStyle(.secondary)
                 }
             }
-            if let budget {
-                BudgetBar(fraction: fraction(of: budget))
+            .font(.caption)
+            .lineLimit(1)
+        }
+    }
+
+    /// This month's spending with the budget folded in (it used to be a separate card further down).
+    private var spendingTile: some View {
+        let budget = budgets.first { $0.category == nil }
+        // Tile titles have their own keys: the narrow tile needs shorter English than the full phrases.
+        return DashboardTile(title: LocalizedStringResource("tile.spending", defaultValue: "本月支出"), symbol: "creditcard",
+                             color: ModuleColor.money) {
+            selection = .ledger
+        } content: {
+            Text(monthExpense.money(baseCurrency, wholeNumbers: true))
+                .font(.title2.weight(.bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            if let budget, budget.amount > 0 {
                 let remaining = budget.amount - monthExpense
-                Text(remaining >= 0
-                     ? "剩余 \(remaining.money(baseCurrency)) · 本月还剩 \(daysLeftInMonth) 天"
-                     : "已超支 \((-remaining).money(baseCurrency))")
-                    .font(.footnote)
+                BudgetBar(fraction: fraction(of: budget))
+                Text(remaining >= 0 ? "预算还剩 \(remaining.money(baseCurrency, wholeNumbers: true))"
+                                    : "已超支 \((-remaining).money(baseCurrency, wholeNumbers: true))")
+                    .font(.caption)
                     .foregroundStyle(remaining >= 0 ? Color.secondary : Color.red)
+                    .lineLimit(1)
             } else {
-                Button("设置每月预算") { showSettings = true }
-                    .font(.subheadline)
+                Text("本月收入 \(monthIncome.money(baseCurrency, wholeNumbers: true))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
-        .padding(.vertical, 4)
+    }
+
+    /// Money owed either way: on the first screen, since it's easy to forget and costly when you do.
+    private var outstandingTile: some View {
+        let open = outstandings.filter { !$0.isSettled }
+        let receivable = open.filter { $0.direction == .receivable }
+        let payable = open.filter { $0.direction == .payable }
+        return DashboardTile(title: LocalizedStringResource("tile.owed", defaultValue: "应收应付"), symbol: "arrow.left.arrow.right",
+                             color: ModuleColor.expiry) {
+            showsOutstanding = true
+        } content: {
+            if open.isEmpty {
+                Text("暂无")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.tertiary)
+                Text("谁欠谁的钱记在这里")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    owedLine("应收", total: Outstanding.total(receivable, base: baseCurrency), count: receivable.count,
+                             color: ModuleColor.money)
+                    owedLine("应付", total: Outstanding.total(payable, base: baseCurrency), count: payable.count,
+                             color: ModuleColor.bills)
+                }
+            }
+        }
+    }
+
+    private func owedLine(_ label: LocalizedStringResource, total: Decimal, count: Int, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(count == 0 ? "—" : total.money(baseCurrency, wholeNumbers: true))
+                .font(.headline)
+                .monospacedDigit()
+                .foregroundStyle(count == 0 ? Color.secondary : color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+    }
+
+    private var upcomingTile: some View {
+        DashboardTile(title: "即将到期", symbol: "calendar", color: ModuleColor.bills) {
+            selection = .reminders
+        } content: {
+            Text("\(upcoming.count)")
+                .font(.title2.weight(.bold))
+                .monospacedDigit()
+            Text(upcoming.first.map { "\($0.name) · \(DayText.countdown(to: $0.date))" } ?? String(localized: "近期没有要付的账单或到期的东西"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: - Review
+
+    /// 「上周周报」「本月月报」 side by side: the spending at a glance, the report a tap away.
+    private func reviewChip(_ kind: PeriodReport.Kind) -> some View {
+        let period = ReportBuilder.defaultPeriod(kind)
+        let spent = LedgerSummary.expenses(in: period.interval, context: context)
+        return Button {
+            router.openReport(kind)
+        } label: {
+            HStack(spacing: 10) {
+                IconTile(symbol: kind == .week ? "calendar.badge.clock" : "chart.bar.xaxis",
+                         color: kind == .week ? ModuleColor.tasks : ModuleColor.money, size: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(kind.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text("\(period.label) · 支出 \(spent.money(baseCurrency, wholeNumbers: true))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
+            .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private func fraction(of budget: Budget) -> Double {
         guard budget.amount > 0 else { return 0 }
         return (monthExpense / budget.amount).doubleValue
-    }
-
-    private var daysLeftInMonth: Int {
-        let calendar = Calendar.current
-        let days = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
-        return days - calendar.component(.day, from: .now) + 1
     }
 
     // MARK: - Derived data
@@ -232,21 +278,25 @@ struct TodayView: View {
             .reduce(0) { $0 + $1.baseAmount }
     }
 
-    private var billsThisWeek: [Bill] {
-        bills.filter { DayText.daysUntil($0.nextDueDate) <= 7 }
+    private var monthIncome: Decimal {
+        monthEntries
+            .filter { $0.kind == .income }
+            .reduce(0) { $0 + $1.baseAmount }
     }
 
+    private var overdueCount: Int {
+        todayTasks.filter { $0.isOverdue() }.count
+    }
+
+    /// Bills due within a week and expiry dates within a month; the Reminders tab has the rest.
     private var upcoming: [UpcomingItem] {
         let soonBills = bills
-            .filter { DayText.daysUntil($0.nextDueDate) <= 30 }
+            .filter { DayText.daysUntil($0.nextDueDate) <= 7 }
             .map(UpcomingItem.bill)
         let soonExpiries = expiries
-            .filter { DayText.daysUntil($0.expiryDate) <= 90 }
+            .filter { DayText.daysUntil($0.expiryDate) <= 30 }
             .map(UpcomingItem.expiry)
-        return (soonBills + soonExpiries)
-            .sorted { $0.date < $1.date }
-            .prefix(6)
-            .map { $0 }
+        return (soonBills + soonExpiries).sorted { $0.date < $1.date }
     }
 }
 
@@ -267,6 +317,52 @@ private enum UpcomingItem: Identifiable {
         case .expiry(let item): item.expiryDate
         }
     }
+
+    var name: String {
+        switch self {
+        case .bill(let bill): bill.name
+        case .expiry(let item): item.name
+        }
+    }
+}
+
+/// One of the four squares at the top of Today: a figure, a line under it, and a tap to the full list.
+private struct DashboardTile<Content: View>: View {
+    let title: LocalizedStringResource
+    let symbol: String
+    let color: Color
+    let action: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: symbol)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(color, in: .circle)
+                    Text(title)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                content
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
+            .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
 }
 
 /// The way into 问一问: shaped like a search field, with an example of what it answers.
@@ -279,10 +375,12 @@ private struct AskEntry: View {
                 Image(systemName: "sparkle.magnifyingglass")
                     .font(.body.weight(.medium))
                     .foregroundStyle(.tint)
-                VStack(alignment: .leading, spacing: 1) {
+                // One line: the name, then an example as far as it fits.
+                HStack(spacing: 8) {
                     Text("问问你记过的")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
+                        .layoutPriority(1)
                     Text("比如：这个月吃饭花了多少？下周有哪些账单？")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -294,7 +392,7 @@ private struct AskEntry: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 11)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18))
             .contentShape(.rect(cornerRadius: 18))
         }

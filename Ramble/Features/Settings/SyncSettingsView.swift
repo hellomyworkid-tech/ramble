@@ -17,7 +17,7 @@ struct SyncSettingsView: View {
                         .foregroundStyle(ModuleColor.warning)
                 }
             } footer: {
-                Text("待办、账本、账单、到期、笔记和附件，在登录同一个 Apple 账户的设备之间自动同步。数据存在你自己的 iCloud 里，我们的服务器看不到。")
+                Text("待办、账本、账单、到期、笔记，连同里面的照片和文件，在登录同一个 Apple 账户的设备之间自动同步。数据存在你自己的 iCloud 里，我们的服务器看不到。")
             }
 
             if monitor.isActive {

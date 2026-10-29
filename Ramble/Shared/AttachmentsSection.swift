@@ -40,6 +40,10 @@ struct DraftAttachment: Identifiable {
         }
         for draft in drafts {
             if let model = draft.model {
+                // A saved photo marked up while editing.
+                if let marked = draft.newData, model.kind == .image {
+                    model.replaceImage(marked, thumbnail: draft.thumbnail ?? marked)
+                }
                 if !draft.recognizedText.isEmpty { model.recognizedText = draft.recognizedText }
                 continue
             }
@@ -195,13 +199,13 @@ struct AttachmentsSection: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 8)], alignment: .leading, spacing: 8) {
                     ForEach(attachments) { item in
                         Button {
-                            preview = PreviewFile(draft: item, among: attachments)
+                            preview = previewFile(for: item)
                         } label: {
                             AttachmentTile(kind: item.kind, thumbnail: item.thumbnail, fileName: item.fileName)
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button("预览", systemImage: "eye") { preview = PreviewFile(draft: item, among: attachments) }
+                            Button("预览", systemImage: "eye") { preview = previewFile(for: item) }
                             if item.kind == .image {
                                 Button("存储到相册", systemImage: "square.and.arrow.down") {
                                     let data = item.data
@@ -242,6 +246,15 @@ struct AttachmentsSection: View {
                 didAutoPresent = true
                 picker.showsPhotos = true
             }
+        }
+    }
+
+    /// Marking up a photo here changes the draft; the form's 保存 keeps it, 取消 doesn't.
+    private func previewFile(for item: DraftAttachment) -> PreviewFile {
+        PreviewFile(draft: item, among: attachments) { id, photo, thumbnail in
+            guard let index = attachments.firstIndex(where: { $0.id == id }) else { return }
+            attachments[index].newData = photo
+            attachments[index].thumbnail = thumbnail
         }
     }
 }
@@ -306,13 +319,16 @@ private struct AttachmentPickers: ViewModifier {
                     }
                 }
             }
-            .fullScreenCover(isPresented: $state.showsCamera) {
-                CameraPicker { data in
-                    if let prepared = ImageTools.prepare(data) {
-                        onAdd(.image(full: prepared.full, thumbnail: prepared.thumbnail))
+            .onChange(of: state.showsCamera) { _, shows in
+                guard shows else { return }
+                state.showsCamera = false
+                CameraPresenter.present { image in
+                    Task {
+                        // Off the main thread: a 12-megapixel photo takes a moment to shrink.
+                        let prepared = await Task.detached(priority: .userInitiated) { ImageTools.prepare(image) }.value
+                        if let prepared { onAdd(.image(full: prepared.full, thumbnail: prepared.thumbnail)) }
                     }
                 }
-                .ignoresSafeArea()
             }
             .fileImporter(isPresented: $state.showsFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 state.errorMessage = nil
@@ -337,22 +353,29 @@ struct PreviewFile: Identifiable {
     var photos: [ViewerPhoto] = []
     var start = 0
 
-    /// `drafts`: the attachments shown alongside it.
-    init(draft: DraftAttachment, among drafts: [DraftAttachment] = []) {
+    /// `drafts`: the attachments shown alongside it. `onMarkup` keeps a marked-up photo (the
+    /// draft's id, the photo, its thumbnail); without it the viewer doesn't offer 标记.
+    init(draft: DraftAttachment, among drafts: [DraftAttachment] = [],
+         onMarkup: ((DraftAttachment.ID, Data, Data) -> Void)? = nil) {
         fileName = draft.fileName.isEmpty ? "photo.jpg" : draft.fileName
         load = { draft.data }
         guard draft.kind == .image else { return }
         let images = (drafts.isEmpty ? [draft] : drafts).filter { $0.kind == .image }
-        photos = images.map { item in ViewerPhoto { item.data } }
+        photos = images.map { item in
+            ViewerPhoto(load: { item.data }, replace: onMarkup.map { keep in { keep(item.id, $0, $1) } })
+        }
         start = images.firstIndex { $0.id == draft.id } ?? 0
     }
 
-    init(attachment: Attachment, among attachments: [Attachment] = []) {
+    init(attachment: Attachment, among attachments: [Attachment] = [],
+         onMarkup: ((Attachment, Data, Data) -> Void)? = nil) {
         fileName = attachment.fileName.isEmpty ? "photo.jpg" : attachment.fileName
         load = { attachment.data }
         guard attachment.kind == .image else { return }
         let images = (attachments.isEmpty ? [attachment] : attachments).filter { $0.kind == .image }
-        photos = images.map { item in ViewerPhoto { item.data } }
+        photos = images.map { item in
+            ViewerPhoto(load: { item.data }, replace: onMarkup.map { keep in { keep(item, $0, $1) } })
+        }
         start = images.firstIndex { $0.persistentModelID == attachment.persistentModelID } ?? 0
     }
 }
@@ -385,35 +408,52 @@ private struct AttachmentPreview: ViewModifier {
     }
 }
 
-/// The system camera, returning a JPEG.
-struct CameraPicker: UIViewControllerRepresentable {
-    let onCapture: (Data) -> Void
-    @Environment(\.dismiss) private var dismiss
+/// The system camera. UIKit presents it over whatever is showing, rather than SwiftUI as a
+/// full-screen cover: the cover made the page beneath it "disappear", which threw away a new
+/// note that had nothing in it yet and left people back on the list after taking a photo.
+final class CameraPresenter: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    /// Holds the delegate while the camera is up (the picker only keeps a weak reference).
+    private static var current: CameraPresenter?
+    private let onCapture: (UIImage) -> Void
 
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
+    private init(onCapture: @escaping (UIImage) -> Void) {
+        self.onCapture = onCapture
     }
 
-    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+    static func present(onCapture: @escaping (UIImage) -> Void) {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera), let top = UIApplication.shared.topViewController else { return }
+        let presenter = CameraPresenter(onCapture: onCapture)
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = presenter
+        // Over, not instead of, the page: it stays in place underneath.
+        picker.modalPresentationStyle = .overFullScreen
+        current = presenter
+        top.present(picker, animated: true)
+    }
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        let image = info[.originalImage] as? UIImage
+        picker.dismiss(animated: true)
+        Self.current = nil
+        if let image { onCapture(image) }
+    }
 
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraPicker
-        init(_ parent: CameraPicker) { self.parent = parent }
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+        Self.current = nil
+    }
+}
 
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let image = info[.originalImage] as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
-                parent.onCapture(data)
-            }
-            parent.dismiss()
+extension UIApplication {
+    /// The view controller on top of the app's main window: the one to present from.
+    var topViewController: UIViewController? {
+        let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        var top = (scene?.keyWindow ?? scene?.windows.first)?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
+            top = presented
         }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
-        }
+        return top
     }
 }

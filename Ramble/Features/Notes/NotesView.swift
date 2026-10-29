@@ -6,6 +6,8 @@ struct NotesView: View {
     @Environment(AppRouter.self) private var router
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
     @State private var path: [Note] = []
+    /// Notes made with "+" here, so one left empty can be thrown away once it's closed.
+    @State private var newNotes: [Note] = []
     @State private var query = ""
     @State private var pendingDelete: Note?
 
@@ -43,6 +45,17 @@ struct NotesView: View {
                 Text("里面的记录、图片和文件都会删除。由它生成的待办会保留。")
             }
             .onChange(of: router.focus, initial: true) { openFocusedNote() }
+            .onChange(of: path) { old, new in
+                // A new note left with nothing in it isn't worth keeping. Only once it's closed:
+                // the page also "disappears" while a full-screen view (a photo) covers it.
+                for note in old where !new.contains(note) {
+                    guard let index = newNotes.firstIndex(where: { $0 === note }) else { continue }
+                    newNotes.remove(at: index)
+                    if note.title.trimmed.isEmpty, (note.entries ?? []).isEmpty {
+                        context.delete(note)
+                    }
+                }
+            }
         }
     }
 
@@ -94,6 +107,7 @@ struct NotesView: View {
     private func createNote() {
         let note = Note(title: "")
         context.insert(note)
+        newNotes.append(note)
         path = [note]
     }
 

@@ -48,15 +48,25 @@ struct SharedPhoto: Transferable {
 struct ViewerPhoto: Identifiable {
     let id = UUID()
     let load: () -> Data?
+    /// Keeps a marked-up version (the photo and its thumbnail, as JPEGs). Without it the viewer
+    /// doesn't offer 标记.
+    var replace: ((_ photo: Data, _ thumbnail: Data) -> Void)?
 }
 
-/// Full-screen photos: swipe between them, pinch or double-tap to zoom, save to Photos or share.
+/// Full-screen photos: swipe between them, pinch or double-tap to zoom, mark up, save to Photos or share.
 struct PhotoViewer: View {
     let photos: [ViewerPhoto]
     @State var index: Int
     @Environment(\.dismiss) private var dismiss
     @State private var loaded: [UUID: Data] = [:]
     @State private var message: String?
+    @State private var markingUp: Markup?
+
+    private struct Markup: Identifiable {
+        let id = UUID()
+        let photo: ViewerPhoto
+        let image: UIImage
+    }
 
     var body: some View {
         NavigationStack {
@@ -79,6 +89,12 @@ struct PhotoViewer: View {
                     ToolbarItem(placement: .principal) {
                         Text(verbatim: "\(index + 1) / \(photos.count)")
                             .font(.subheadline.monospacedDigit())
+                    }
+                }
+                if currentPhoto?.replace != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("标记", systemImage: "pencil.tip.crop.circle") { startMarkup() }
+                            .disabled(current == nil)
                     }
                 }
             }
@@ -104,12 +120,38 @@ struct PhotoViewer: View {
                 .padding(.bottom, 8)
             }
             .transientMessage($message)
+            .fullScreenCover(item: $markingUp) { markup in
+                PhotoMarkupView(image: markup.image) { marked in keep(marked, for: markup.photo) }
+            }
         }
         .preferredColorScheme(.dark)
     }
 
+    private var currentPhoto: ViewerPhoto? {
+        photos.indices.contains(index) ? photos[index] : nil
+    }
+
     private var current: Data? {
-        photos.indices.contains(index) ? loaded[photos[index].id] : nil
+        currentPhoto.flatMap { loaded[$0.id] }
+    }
+
+    private func startMarkup() {
+        guard let photo = currentPhoto, let data = current, let image = UIImage(data: data) else { return }
+        markingUp = Markup(photo: photo, image: image)
+    }
+
+    /// The marked-up photo replaces the original, here and wherever it's kept.
+    private func keep(_ marked: UIImage, for photo: ViewerPhoto) {
+        Task {
+            let prepared = await Task.detached(priority: .userInitiated) { ImageTools.prepare(marked) }.value
+            guard let prepared else {
+                message = String(localized: "没能保存标记。")
+                return
+            }
+            photo.replace?(prepared.full, prepared.thumbnail)
+            loaded[photo.id] = prepared.full
+            message = String(localized: "已保存标记")
+        }
     }
 
     private func load(_ photo: ViewerPhoto) {

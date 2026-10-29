@@ -58,7 +58,9 @@ struct NoteDetailView: View {
                         ForEach(entriesByDay[day] ?? []) { entry in
                             NoteEntryCell(entry: entry,
                                           onOpenTask: { editingTask = $0 },
-                                          onPreview: { attachment, all in preview = PreviewFile(attachment: attachment, among: all) },
+                                          onPreview: { attachment, all in
+                                              preview = PreviewFile(attachment: attachment, among: all, onMarkup: keepMarkup)
+                                          },
                                           onSavePhoto: { attachment in
                                               let data = attachment.data
                                               Task { photoMessage = await PhotoSaver.saveAndDescribe(data) }
@@ -189,13 +191,10 @@ struct NoteDetailView: View {
             }
             #endif
         }
+        // A new note left empty is thrown away by the list (NotesView), once it's closed.
         .onDisappear {
             router.hidesCaptureBar = false
             Task { await recorder.cancel() }
-            // A note opened by "+" and left empty isn't worth keeping.
-            if note.title.trimmed.isEmpty, (note.entries ?? []).isEmpty, composerText.trimmed.isEmpty {
-                context.delete(note)
-            }
         }
     }
 
@@ -204,6 +203,19 @@ struct NoteDetailView: View {
     private var entriesByDay: [Date: [NoteEntry]] {
         let shown = showsImportantOnly ? note.sortedEntries.filter(\.isImportant) : note.sortedEntries
         return Dictionary(grouping: shown) { Calendar.current.startOfDay(for: $0.date) }
+    }
+
+    /// A photo marked up in the viewer replaces the original; its text is read again for search,
+    /// in case the marks added some.
+    private func keepMarkup(_ attachment: Attachment, photo: Data, thumbnail: Data) {
+        attachment.replaceImage(photo, thumbnail: thumbnail)
+        attachment.recognizedText = ""
+        if let entry = attachment.noteEntry {
+            entry.editedAt = .now
+            note.updatedAt = .now
+            try? context.save()
+            NoteIndexer.indexAttachments(of: entry)
+        }
     }
 
     private func toggleKeyPoint(_ entry: NoteEntry) {
@@ -475,23 +487,23 @@ struct NoteEntryCell: View, Equatable {
 
             let attachments = (entry.attachments ?? []).sorted { $0.createdAt < $1.createdAt }
             if !attachments.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(attachments) { attachment in
-                            Button {
+                // Wrapped rather than in a sideways scroller: a scroller took the swipe that
+                // shows 重点 and 删除 whenever it started on a photo.
+                FlowLayout(spacing: 8) {
+                    ForEach(attachments) { attachment in
+                        Button {
+                            onPreview(attachment, attachments)
+                        } label: {
+                            AttachmentTile(kind: attachment.kind, thumbnail: attachment.thumbnailData,
+                                           fileName: attachment.fileName, size: 72)
+                        }
+                        .buttonStyle(.borderless)
+                        .contextMenu {
+                            Button(attachment.kind == .image ? "查看" : "预览", systemImage: "eye") {
                                 onPreview(attachment, attachments)
-                            } label: {
-                                AttachmentTile(kind: attachment.kind, thumbnail: attachment.thumbnailData,
-                                               fileName: attachment.fileName, size: 72)
                             }
-                            .buttonStyle(.borderless)
-                            .contextMenu {
-                                Button(attachment.kind == .image ? "查看" : "预览", systemImage: "eye") {
-                                    onPreview(attachment, attachments)
-                                }
-                                if attachment.kind == .image {
-                                    Button("存储到相册", systemImage: "square.and.arrow.down") { onSavePhoto(attachment) }
-                                }
+                            if attachment.kind == .image {
+                                Button("存储到相册", systemImage: "square.and.arrow.down") { onSavePhoto(attachment) }
                             }
                         }
                     }

@@ -196,11 +196,16 @@ enum NotificationActions {
 final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationHandler()
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+    // The completion-handler forms rather than the async ones: an async delegate method hands its
+    // completion back on whatever thread it finished on, and UIKit asserts the main thread there.
+    // Tapping a reminder crashed the app as it opened.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
         let content = response.notification.request.content
         let payload = NotificationPayload(
             action: response.actionIdentifier,
@@ -211,7 +216,10 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
             category: content.categoryIdentifier,
             threadID: content.threadIdentifier
         )
-        await Self.handle(payload)
+        Task { @MainActor in
+            await Self.handle(payload)
+            completionHandler()
+        }
     }
 
     @MainActor

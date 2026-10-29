@@ -47,6 +47,13 @@ final class Attachment {
 
     /// The bytes to preview or share.
     var data: Data? { kind == .image ? imageData : fileData }
+
+    /// A marked-up photo in place of this one.
+    func replaceImage(_ photo: Data, thumbnail: Data) {
+        imageData = photo
+        thumbnailData = thumbnail
+        byteCount = photo.count
+    }
 }
 
 nonisolated enum AttachmentKind: String, Codable {

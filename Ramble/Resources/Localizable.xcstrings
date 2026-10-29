@@ -69,6 +69,16 @@
         }
       }
     },
+    "%@ · 支出 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ · 根据你的笔记" : {
       "localizations" : {
         "en" : {
@@ -2004,6 +2014,38 @@
         }
       }
     },
+    "tile.owed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Owed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应收应付"
+          }
+        }
+      }
+    },
+    "tile.spending" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Month"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本月支出"
+          }
+        }
+      }
+    },
     "≈ %@" : {
       "localizations" : {
         "en" : {
@@ -3006,6 +3048,16 @@
         }
       }
     },
+    "借款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loan"
+          }
+        }
+      }
+    },
     "值得注意" : {
       "localizations" : {
         "en" : {
@@ -3268,6 +3320,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "When off, only on-device models are used. Ramble asks again the first time cloud AI is needed, or when you switch providers."
+          }
+        }
+      }
+    },
+    "其中 %lld 项已过期" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld overdue"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld overdue"
+                }
+              }
+            }
           }
         }
       }
@@ -5146,6 +5220,16 @@
         }
       }
     },
+    "已保存标记" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markup saved"
+          }
+        }
+      }
+    },
     "已保存照片，金额保持你填的。" : {
       "localizations" : {
         "en" : {
@@ -5760,6 +5844,16 @@
         }
       }
     },
+    "张三" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sam"
+          }
+        }
+      }
+    },
     "归档（不再出现在记账选项里）" : {
       "localizations" : {
         "en" : {
@@ -5830,22 +5924,22 @@
         }
       }
     },
-    "待办、账本、账单、到期、笔记和设置里的账户、分类、预算都在一个文件里，可以存到「文件」或 iCloud 云盘。换手机或重装后用「从备份恢复」找回。" : {
+    "待办、账本、账单、到期、笔记和设置里的账户、分类、预算都在一个文件里；打开「包含照片和文件」，所有照片和文件也一起备份。可以存到「文件」或 iCloud 云盘，换手机或重装后用「从备份恢复」找回。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To-dos, ledger, bills, expiries, notes, plus the accounts, categories and budgets in Settings — all in one file you can save to Files or iCloud Drive. Use “Restore from Backup” after switching phones or reinstalling."
+            "value" : "To-dos, ledger, bills, expiries, notes, plus the accounts, categories and budgets in Settings, all in one file. With “Include Photos and Files” on, every photo and file goes in too. Save it to Files or iCloud Drive, and use “Restore from Backup” after switching phones or reinstalling."
           }
         }
       }
     },
-    "待办、账本、账单、到期、笔记和附件，在登录同一个 Apple 账户的设备之间自动同步。数据存在你自己的 iCloud 里，我们的服务器看不到。" : {
+    "待办、账本、账单、到期、笔记，连同里面的照片和文件，在登录同一个 Apple 账户的设备之间自动同步。数据存在你自己的 iCloud 里，我们的服务器看不到。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "To-dos, ledger, bills, expiries, notes and attachments sync automatically between devices signed in to the same Apple Account. The data lives in your own iCloud; our servers can't see it."
+            "value" : "To-dos, ledger, bills, expiries and notes, with their photos and files, sync automatically between devices signed in to the same Apple Account. The data lives in your own iCloud; our servers can't see it."
           }
         }
       }
@@ -6680,6 +6774,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Switch to %@"
+          }
+        }
+      }
+    },
+    "放弃标记" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Markup"
+          }
+        }
+      }
+    },
+    "放弃这次标记？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard this markup?"
           }
         }
       }
@@ -7650,6 +7764,16 @@
         }
       }
     },
+    "本月收入 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Income this month %@"
+          }
+        }
+      }
+    },
     "本月结余多少" : {
       "localizations" : {
         "en" : {
@@ -7846,6 +7970,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mark as Key Point"
+          }
+        }
+      }
+    },
+    "标记" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markup"
           }
         }
       }
@@ -8690,6 +8824,16 @@
         }
       }
     },
+    "没能保存标记。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the markup."
+          }
+        }
+      }
+    },
     "没能读取。" : {
       "localizations" : {
         "en" : {
@@ -8796,6 +8940,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add to-do “${title}”"
+          }
+        }
+      }
+    },
+    "添加文字或形状" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Text or Shape"
           }
         }
       }
@@ -8986,6 +9140,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The tiles arrived, 42 boxes in all. Two have chipped corners and the seller agreed to send replacements."
+          }
+        }
+      }
+    },
+    "瓷砖工钱" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiling labor"
           }
         }
       }
@@ -9778,6 +9942,16 @@
         }
       }
     },
+    "装修师傅" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The contractor"
+          }
+        }
+      }
+    },
     "装修记录" : {
       "localizations" : {
         "en" : {
@@ -10320,6 +10494,16 @@
         }
       }
     },
+    "谁欠谁的钱记在这里" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Who owes whom, kept here"
+          }
+        }
+      }
+    },
     "账单" : {
       "localizations" : {
         "en" : {
@@ -10530,6 +10714,16 @@
         }
       }
     },
+    "近期没有要付的账单或到期的东西" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No bills or expiries coming up"
+          }
+        }
+      }
+    },
     "近期没有要处理的账单和证件" : {
       "localizations" : {
         "en" : {
@@ -10601,6 +10795,28 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Expires in %lld days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "还有 %lld 项" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
                 }
               }
             }
@@ -11136,6 +11352,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Its entries, photos and files will all be deleted. To-dos created from it will be kept."
+          }
+        }
+      }
+    },
+    "重做" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redo"
           }
         }
       }

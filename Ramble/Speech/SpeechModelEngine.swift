@@ -50,9 +50,12 @@ actor SpeechModelEngine {
     }
 
     func unload() {
+        let wasLoaded = model != nil
         model = nil
         loadedFolder = nil
-        Memory.clearCache()
+        // With nothing loaded there's nothing to free, and touching MLX would start up its GPU
+        // device just to clear an empty cache (in the simulator, which has none, it aborts).
+        if wasLoaded { Memory.clearCache() }
     }
 
     /// 16 kHz mono samples → text with punctuation.

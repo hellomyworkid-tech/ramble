@@ -6,6 +6,11 @@ nonisolated enum ImageTools {
     /// Downscales a picked photo for storage, plus a small thumbnail. Nil if it isn't an image.
     static func prepare(_ data: Data, maxSide: CGFloat = 2048, thumbnailSide: CGFloat = 320) -> (full: Data, thumbnail: Data)? {
         guard let image = UIImage(data: data) else { return nil }
+        return prepare(image, maxSide: maxSide, thumbnailSide: thumbnailSide)
+    }
+
+    /// The same for an image already decoded (from the camera, or a marked-up photo).
+    static func prepare(_ image: UIImage, maxSide: CGFloat = 2048, thumbnailSide: CGFloat = 320) -> (full: Data, thumbnail: Data)? {
         guard let full = resized(image, maxSide: maxSide).jpegData(compressionQuality: 0.8),
               let thumbnail = resized(image, maxSide: thumbnailSide).jpegData(compressionQuality: 0.7)
         else { return nil }

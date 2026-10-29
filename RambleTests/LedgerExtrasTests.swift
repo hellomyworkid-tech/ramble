@@ -158,6 +158,30 @@ struct AttachmentTests {
         #expect(try context.fetchCount(FetchDescriptor<Ramble.Attachment>()) == 0)
     }
 
+    /// 标记 on a saved photo in a form changes the draft; saving the form puts it in place of the
+    /// old photo, in the same attachment, keeping its text for search.
+    @Test func markedUpPhotoReplacesTheSavedOneOnSave() throws {
+        let context = container.mainContext
+        let entry = LedgerEntry(kind: .expense, amount: 35, currencyCode: "CNY")
+        context.insert(entry)
+        DraftAttachment.sync([DraftAttachment.image(full: Data([1]), thumbnail: Data([1]))], replacing: nil, in: context) { $0.entry = entry }
+        try context.save()
+        let saved = try #require(entry.attachments?.first)
+        saved.recognizedText = "小票"
+
+        var drafts = DraftAttachment.drafts(from: entry.attachments)
+        drafts[0].newData = Data([7, 7, 7])
+        drafts[0].thumbnail = Data([7])
+        DraftAttachment.sync(drafts, replacing: entry.attachments, in: context) { $0.entry = entry }
+        try context.save()
+
+        #expect(try context.fetchCount(FetchDescriptor<Ramble.Attachment>()) == 1)
+        #expect(saved.imageData == Data([7, 7, 7]))
+        #expect(saved.thumbnailData == Data([7]))
+        #expect(saved.byteCount == 3)
+        #expect(saved.recognizedText == "小票")
+    }
+
     @Test func changingTheBaseCurrencyReconvertsEntries() throws {
         let context = container.mainContext
         let defaults = try #require(UserDefaults(suiteName: "rates-\(UUID().uuidString)"))
