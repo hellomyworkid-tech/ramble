@@ -383,19 +383,15 @@ struct PreviewFile: Identifiable {
 private struct AttachmentPreview: ViewModifier {
     @Binding var file: PreviewFile?
     @State private var url: URL?
-    @State private var photos: PreviewFile?
 
     func body(content: Content) -> some View {
         content
             .quickLookPreview($url)
-            .fullScreenCover(item: $photos) { file in
-                PhotoViewer(photos: file.photos, index: file.start)
-            }
             .onChange(of: file?.id) {
                 guard let file else { return }
                 self.file = nil
                 if !file.photos.isEmpty {
-                    photos = file
+                    PhotoViewer.present(file.photos, at: file.start)
                     return
                 }
                 guard let data = file.load() else { return }

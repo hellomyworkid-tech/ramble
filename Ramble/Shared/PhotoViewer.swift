@@ -57,7 +57,7 @@ struct ViewerPhoto: Identifiable {
 struct PhotoViewer: View {
     let photos: [ViewerPhoto]
     @State var index: Int
-    @Environment(\.dismiss) private var dismiss
+    let close: () -> Void
     @State private var loaded: [UUID: Data] = [:]
     @State private var message: String?
     @State private var markingUp: Markup?
@@ -83,7 +83,7 @@ struct PhotoViewer: View {
             .ignoresSafeArea()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭", systemImage: "xmark") { dismiss() }
+                    Button("关闭", systemImage: "xmark", action: close)
                 }
                 if photos.count > 1 {
                     ToolbarItem(placement: .principal) {
@@ -124,7 +124,23 @@ struct PhotoViewer: View {
                 PhotoMarkupView(image: markup.image) { marked in keep(marked, for: markup.photo) }
             }
         }
-        .preferredColorScheme(.dark)
+    }
+
+    /// Opens the viewer over whatever is showing. UIKit presents it, over the page rather than in
+    /// place of it, as it does the camera: in SwiftUI's full-screen cover, the viewer's dark look
+    /// flashed across the page beneath as it opened, and the page "disappeared" behind it, so a
+    /// note jumped back to its last entry when the photo was closed.
+    static func present(_ photos: [ViewerPhoto], at index: Int) {
+        guard let top = UIApplication.shared.topViewController else { return }
+        weak var shown: UIViewController?
+        let host = UIHostingController(rootView: PhotoViewer(photos: photos, index: index) { shown?.dismiss(animated: true) })
+        shown = host
+        host.overrideUserInterfaceStyle = .dark
+        host.view.backgroundColor = .black
+        host.modalPresentationStyle = .overFullScreen
+        // The status bar turns light over the black, as it would for a full-screen presentation.
+        host.modalPresentationCapturesStatusBarAppearance = true
+        top.present(host, animated: true)
     }
 
     private var currentPhoto: ViewerPhoto? {

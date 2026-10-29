@@ -44,6 +44,8 @@ struct PhotoMarkupView: View {
                     Button("放弃标记", role: .destructive) { dismiss() }
                 }
         }
+        // Dark like the photo viewer it opens from, which UIKit presents: a SwiftUI cover doesn't take that on.
+        .preferredColorScheme(.dark)
     }
 
     private func finish() async {
