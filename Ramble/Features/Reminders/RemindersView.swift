@@ -24,66 +24,73 @@ struct RemindersView: View {
     @State private var payingBill: Bill?
     @State private var isCreatingBill = false
     @State private var isCreatingExpiry = false
+    /// The bill or expiry a reminder led to, tinted for a moment.
+    @State private var spotlit: PersistentIdentifier?
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Picker("类别", selection: $segment) {
-                        ForEach(Segment.allCases) { Text($0.title).tag($0) }
+            ScrollViewReader { proxy in
+                List {
+                    Section {
+                        Picker("类别", selection: $segment) {
+                            ForEach(Segment.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
 
-                switch segment {
-                case .bills: billSections
-                case .expiries: expirySections
-                }
-            }
-            .overlay { emptyState }
-            .navigationTitle("提醒")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(segment == .bills ? "新建账单" : "新建到期提醒", systemImage: "plus") {
-                        if segment == .bills { isCreatingBill = true } else { isCreatingExpiry = true }
+                    switch segment {
+                    case .bills: billSections
+                    case .expiries: expirySections
                     }
                 }
+                .overlay { emptyState }
+                .navigationTitle("提醒")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(segment == .bills ? "新建账单" : "新建到期提醒", systemImage: "plus") {
+                            if segment == .bills { isCreatingBill = true } else { isCreatingExpiry = true }
+                        }
+                    }
+                }
+                .sheet(isPresented: $isCreatingBill) {
+                    NavigationStack { BillEditorView(bill: nil) }
+                }
+                .sheet(isPresented: $isCreatingExpiry) {
+                    NavigationStack { ExpiryEditorView(item: nil) }
+                }
+                .sheet(item: $editingBill) { bill in
+                    NavigationStack { BillEditorView(bill: bill) }
+                }
+                .sheet(item: $editingExpiry) { item in
+                    NavigationStack { ExpiryEditorView(item: item) }
+                }
+                .sheet(item: $payingBill) { bill in
+                    NavigationStack { MarkPaidView(bill: bill) }
+                        .presentationDetents([.medium, .large])
+                }
+                .onChange(of: router.focus, initial: true) { showFocusedRecord(proxy) }
             }
-            .sheet(isPresented: $isCreatingBill) {
-                NavigationStack { BillEditorView(bill: nil) }
-            }
-            .sheet(isPresented: $isCreatingExpiry) {
-                NavigationStack { ExpiryEditorView(item: nil) }
-            }
-            .sheet(item: $editingBill) { bill in
-                NavigationStack { BillEditorView(bill: bill) }
-            }
-            .sheet(item: $editingExpiry) { item in
-                NavigationStack { ExpiryEditorView(item: item) }
-            }
-            .sheet(item: $payingBill) { bill in
-                NavigationStack { MarkPaidView(bill: bill) }
-                    .presentationDetents([.medium, .large])
-            }
-            .onChange(of: router.focus, initial: true) { openFocusedRecord() }
         }
     }
 
-    private func openFocusedRecord() {
+    /// A tapped reminder shows its bill or expiry in the list, where a swipe marks it paid or
+    /// renewed, rather than opening it for editing (as with to-dos). 「填写金额并标记已付」 on a
+    /// reminder goes straight to marking it paid.
+    private func showFocusedRecord(_ proxy: ScrollViewProxy) {
         switch router.focus {
         case .bill(let id, let pay):
             router.focus = nil
             guard let bill = bills.first(where: { $0.persistentModelID == id }) else { return }
             segment = .bills
-            if pay && bill.isActive { payingBill = bill } else { editingBill = bill }
+            if pay && bill.isActive { payingBill = bill } else { proxy.spotlight(id, on: $spotlit) }
         case .expiry(let id):
             router.focus = nil
-            guard let item = expiries.first(where: { $0.persistentModelID == id }) else { return }
+            guard expiries.contains(where: { $0.persistentModelID == id }) else { return }
             segment = .expiries
-            editingExpiry = item
+            proxy.spotlight(id, on: $spotlit)
         default:
             break
         }
@@ -131,6 +138,8 @@ struct RemindersView: View {
                             Button("编辑", systemImage: "pencil") { editingBill = bill }
                             Button("删除", systemImage: "trash", role: .destructive) { context.delete(bill) }
                         }
+                        .id(bill.persistentModelID)
+                        .spotlit(spotlit == bill.persistentModelID, ModuleColor.bills)
                 }
             } header: {
                 Text(title)
@@ -170,6 +179,8 @@ struct RemindersView: View {
                                 context.delete(item)
                             }
                         }
+                        .id(item.persistentModelID)
+                        .spotlit(spotlit == item.persistentModelID, ModuleColor.expiry)
                 }
             } header: {
                 Text(title)

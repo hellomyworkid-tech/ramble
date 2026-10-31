@@ -177,6 +177,29 @@ private struct TransientMessage: ViewModifier {
     }
 }
 
+extension ScrollViewProxy {
+    /// Shows a row a reminder led to: tints it for a moment and brings it to the middle of the
+    /// list, once the list has caught up with a change of tab or filter.
+    func spotlight<ID: Hashable>(_ id: ID, on spotlit: Binding<ID?>) {
+        spotlit.wrappedValue = id
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            withAnimation { scrollTo(id, anchor: .center) }
+            try? await Task.sleep(for: .seconds(3))
+            withAnimation(.easeOut(duration: 0.6)) {
+                if spotlit.wrappedValue == id { spotlit.wrappedValue = nil }
+            }
+        }
+    }
+}
+
+extension View {
+    /// The tint on a row while it's spotlit (`ScrollViewProxy.spotlight`).
+    func spotlit(_ isOn: Bool, _ color: Color) -> some View {
+        listRowBackground(isOn ? Color(.secondarySystemGroupedBackground).overlay(color.opacity(0.18)) : nil)
+    }
+}
+
 /// Lays its views out in rows, wrapping as needed (suggestion chips, attachment tiles).
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8

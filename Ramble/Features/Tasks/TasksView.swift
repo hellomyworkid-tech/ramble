@@ -29,63 +29,71 @@ struct TasksView: View {
     @State private var filter: Filter = .today
     @State private var editingTask: TaskItem?
     @State private var isCreating = false
+    /// The to-do a reminder led to, tinted for a moment.
+    @State private var spotlit: PersistentIdentifier?
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Picker("范围", selection: $filter) {
-                        ForEach(Filter.allCases) { Text($0.title).tag($0) }
+            ScrollViewReader { proxy in
+                List {
+                    Section {
+                        Picker("范围", selection: $filter) {
+                            ForEach(Filter.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
 
-                ForEach(groups) { group in
-                    Section(group.title) {
-                        ForEach(group.tasks) { task in
-                            TaskRow(task: task)
-                                .contentShape(.rect)
-                                .onTapGesture { editingTask = task }
-                                .swipeActions {
-                                    Button("删除", systemImage: "trash", role: .destructive) {
-                                        context.delete(task)
+                    ForEach(groups) { group in
+                        Section(group.title) {
+                            ForEach(group.tasks) { task in
+                                TaskRow(task: task)
+                                    .contentShape(.rect)
+                                    .onTapGesture { editingTask = task }
+                                    .swipeActions {
+                                        Button("删除", systemImage: "trash", role: .destructive) {
+                                            context.delete(task)
+                                        }
                                     }
-                                }
+                                    .id(task.persistentModelID)
+                                    .spotlit(spotlit == task.persistentModelID, ModuleColor.tasks)
+                            }
                         }
                     }
                 }
-            }
-            .overlay {
-                if groups.isEmpty {
-                    ContentUnavailableView(emptyTitle, systemImage: "checkmark.circle", description: Text("点右上角 +，或者在下方直接说出来"))
+                .overlay {
+                    if groups.isEmpty {
+                        ContentUnavailableView(emptyTitle, systemImage: "checkmark.circle", description: Text("点右上角 +，或者在下方直接说出来"))
+                    }
                 }
-            }
-            .animation(.default, value: filter)
-            .navigationTitle("待办")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("新建待办", systemImage: "plus") { isCreating = true }
+                .animation(.default, value: filter)
+                .navigationTitle("待办")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("新建待办", systemImage: "plus") { isCreating = true }
+                    }
                 }
+                .sheet(isPresented: $isCreating) {
+                    NavigationStack { TaskEditorView(task: nil) }
+                }
+                .sheet(item: $editingTask) { task in
+                    NavigationStack { TaskEditorView(task: task) }
+                }
+                .onChange(of: router.focus, initial: true) { showFocusedTask(proxy) }
             }
-            .sheet(isPresented: $isCreating) {
-                NavigationStack { TaskEditorView(task: nil) }
-            }
-            .sheet(item: $editingTask) { task in
-                NavigationStack { TaskEditorView(task: task) }
-            }
-            .onChange(of: router.focus, initial: true) { openFocusedTask() }
         }
     }
 
-    private func openFocusedTask() {
+    /// A tapped reminder shows its to-do in the list, with the checkbox at hand, rather than
+    /// opening it for editing: by the time the reminder is tapped, it has often just been done.
+    private func showFocusedTask(_ proxy: ScrollViewProxy) {
         guard case .task(let id) = router.focus else { return }
         router.focus = nil
         guard let task = tasks.first(where: { $0.persistentModelID == id }) else { return }
         filter = task.isCompleted ? .completed : task.isDueByEndOfToday() ? .today : .upcoming
-        editingTask = task
+        proxy.spotlight(id, on: $spotlit)
     }
 
     private var emptyTitle: LocalizedStringResource {
