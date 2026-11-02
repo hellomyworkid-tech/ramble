@@ -86,6 +86,7 @@ struct RootView: View {
                 Rectangle().fill(.background).ignoresSafeArea()
             }
         }
+        .background(KeyboardDismissalInstaller())
         .environment(router)
         .onChange(of: router.focus) { _, focus in
             // A notification tap should land on the record, not behind the capture sheet.

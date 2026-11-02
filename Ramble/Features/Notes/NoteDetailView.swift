@@ -88,6 +88,8 @@ struct NoteDetailView: View {
                     }
                 }
             }
+            // Tapping the entries puts the composer's keyboard away, as in a conversation.
+            .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
             .safeAreaInset(edge: .bottom) { composer }
             .onChange(of: note.entries?.count) {
                 if let last = note.sortedEntries.last {

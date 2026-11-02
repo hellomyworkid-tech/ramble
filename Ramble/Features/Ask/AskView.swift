@@ -83,6 +83,8 @@ struct AskView: View {
                     .padding()
                 }
                 .scrollDismissesKeyboard(.interactively)
+                // So does a tap on the answers.
+                .simultaneousGesture(TapGesture().onEnded { focused = false })
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .background(Color(.systemGroupedBackground))
                 .onChange(of: turns.count) { _, _ in

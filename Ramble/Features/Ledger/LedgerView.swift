@@ -47,14 +47,21 @@ struct LedgerView: View {
     }
 }
 
-/// The selected month's summary and entries, grouped by day.
+/// How the month's entries are listed: day by day, or added up per category.
+enum LedgerGrouping: String {
+    case date, category
+
+    static let storageKey = "ledger.grouping"
+}
+
+/// The selected month's summary and entries, by day or by category.
 private struct MonthLedgerList: View {
     @Binding var month: Date
     let baseCurrency: String
 
-    @Environment(\.modelContext) private var context
     @Query private var entries: [LedgerEntry]
     @Query private var budgets: [Budget]
+    @AppStorage(LedgerGrouping.storageKey) private var grouping = LedgerGrouping.date
     @State private var editingEntry: LedgerEntry?
 
     init(month: Binding<Date>, baseCurrency: String) {
@@ -75,29 +82,26 @@ private struct MonthLedgerList: View {
                 OutstandingSummaryRow(baseCurrency: baseCurrency)
             }
 
-            ForEach(days, id: \.self) { day in
+            if !entries.isEmpty {
                 Section {
-                    ForEach(entriesByDay[day] ?? []) { entry in
-                        EntryRow(entry: entry, baseCurrency: baseCurrency)
-                            .contentShape(.rect)
-                            .onTapGesture { editingEntry = entry }
-                            .swipeActions {
-                                Button("删除", systemImage: "trash", role: .destructive) {
-                                    context.delete(entry)
-                                }
-                            }
+                    Picker("查看方式", selection: $grouping) {
+                        Text("按日期").tag(LedgerGrouping.date)
+                        Text("按分类").tag(LedgerGrouping.category)
                     }
-                } header: {
-                    HStack {
-                        Text(DayText.dayWithWeekday(day))
-                        Spacer()
-                        let spent = total(of: .expense, in: entriesByDay[day] ?? [])
-                        if spent > 0 {
-                            Text("支出 \(spent.money(baseCurrency))")
-                                .monospacedDigit()
-                        }
-                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 }
+            }
+
+            switch grouping {
+            case .date:
+                EntriesByDay(entries: entries, baseCurrency: baseCurrency) { editingEntry = $0 }
+            case .category:
+                categorySection(.expense)
+                categorySection(.income)
+                categorySection(.transfer)
             }
         }
         .overlay {
@@ -138,12 +142,29 @@ private struct MonthLedgerList: View {
         .padding(.vertical, 4)
     }
 
-    private var entriesByDay: [Date: [LedgerEntry]] {
-        Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.date) }
-    }
-
-    private var days: [Date] {
-        entriesByDay.keys.sorted(by: >)
+    /// Where the month's spending (or income) went, largest category first; each opens its
+    /// entries. Transfers, which are neither, get one row of their own.
+    @ViewBuilder
+    private func categorySection(_ kind: EntryKind) -> some View {
+        let list = entries.filter { $0.kind == kind }
+        if !list.isEmpty {
+            let totals = kind == .transfer
+                ? [CategoryTotal(category: nil, amount: total(of: kind, in: list), count: list.count)]
+                : CategoryTotal.totals(of: list)
+            Section {
+                ForEach(totals) { item in
+                    NavigationLink {
+                        CategoryLedgerView(kind: kind, category: item.category, interval: month.monthInterval(),
+                                           periodTitle: month.formatted(.dateTime.year().month(.wide)), baseCurrency: baseCurrency)
+                    } label: {
+                        CategoryTotalRow(total: item, kind: kind, largest: totals.first?.amount ?? 0,
+                                         sum: total(of: kind, in: list), baseCurrency: baseCurrency)
+                    }
+                }
+            } header: {
+                Text(kind.title)
+            }
+        }
     }
 
     private func total(of kind: EntryKind, in list: [LedgerEntry]) -> Decimal {

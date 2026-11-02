@@ -109,7 +109,7 @@ private struct StatsContent: View {
             Button("上一个", systemImage: "chevron.left") { shift(-1) }
                 .labelStyle(.iconOnly)
             Spacer()
-            Text(period == .month ? interval.start.formatted(.dateTime.year().month(.wide)) : interval.start.formatted(.dateTime.year()))
+            Text(periodTitle)
                 .font(.headline)
             Spacer()
             Button("下一个", systemImage: "chevron.right") { shift(1) }
@@ -118,6 +118,10 @@ private struct StatsContent: View {
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, 16)
+    }
+
+    private var periodTitle: String {
+        period == .month ? interval.start.formatted(.dateTime.year().month(.wide)) : interval.start.formatted(.dateTime.year())
     }
 
     private func shift(_ step: Int) {
@@ -296,52 +300,16 @@ private struct StatsContent: View {
 
     // MARK: - Breakdown by category
 
-    private struct CategoryTotal: Identifiable {
-        let category: LedgerCategory?
-        let amount: Decimal
-        let entries: [LedgerEntry]
-        var id: String { category.map { "\($0.persistentModelID.hashValue)" } ?? "none" }
-    }
-
-    private var categoryTotals: [CategoryTotal] {
-        let grouped = Dictionary(grouping: expenses) { $0.category?.persistentModelID }
-        return grouped.values.map { list in
-            CategoryTotal(category: list.first?.category, amount: list.reduce(0) { $0 + $1.baseAmount }, entries: list)
-        }
-        .sorted { $0.amount > $1.amount }
-    }
-
     private var breakdownSection: some View {
         Section("支出构成") {
-            let totals = categoryTotals
-            let spent = total(.expense)
-            let largest = totals.first?.amount ?? 1
+            let totals = CategoryTotal.totals(of: expenses)
             ForEach(totals) { item in
                 NavigationLink {
-                    CategoryEntriesView(title: item.category?.name ?? String(localized: "未分类"),
-                                        entries: item.entries.sorted { $0.date > $1.date },
-                                        baseCurrency: baseCurrency)
+                    CategoryLedgerView(kind: .expense, category: item.category, interval: interval,
+                                       periodTitle: periodTitle, baseCurrency: baseCurrency)
                 } label: {
-                    HStack(spacing: 12) {
-                        IconTile(symbol: item.category?.symbol ?? "questionmark", color: Color(hex: item.category?.colorHex ?? "#6E6E73"), size: 30)
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(item.category?.name ?? String(localized: "未分类"))
-                                Spacer()
-                                Text(item.amount.money(baseCurrency))
-                                    .monospacedDigit()
-                            }
-                            HStack(spacing: 8) {
-                                ProportionBar(fraction: largest > 0 ? (item.amount / largest).doubleValue : 0)
-                                Text((spent > 0 ? (item.amount / spent).doubleValue : 0).formatted(.percent.precision(.fractionLength(0))))
-                                    .font(.caption)
-                                    .monospacedDigit()
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 40, alignment: .trailing)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 2)
+                    CategoryTotalRow(total: item, kind: .expense, largest: totals.first?.amount ?? 0,
+                                     sum: total(.expense), baseCurrency: baseCurrency)
                 }
             }
         }
@@ -434,17 +402,18 @@ private struct StatTile: View {
 }
 
 /// A thin single-hue bar for ranked lists.
-private struct ProportionBar: View {
+struct ProportionBar: View {
     let fraction: Double
+    var color = ChartPalette.expense
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 // A lighter step of the same hue, so short bars still read as a share.
                 Capsule()
-                    .fill(ChartPalette.expense.opacity(0.15))
+                    .fill(color.opacity(0.15))
                 Capsule()
-                    .fill(ChartPalette.expense)
+                    .fill(color)
                     .frame(width: max(6, proxy.size.width * min(max(fraction, 0), 1)))
             }
         }
@@ -477,25 +446,5 @@ private struct ChartTooltip: View {
         }
         .padding(8)
         .background(.regularMaterial, in: .rect(cornerRadius: 8))
-    }
-}
-
-struct CategoryEntriesView: View {
-    let title: String
-    let entries: [LedgerEntry]
-    let baseCurrency: String
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(entries) { entry in
-                    EntryRow(entry: entry, baseCurrency: baseCurrency)
-                }
-            } footer: {
-                Text("共 \(entries.count) 笔，\(entries.reduce(Decimal(0)) { $0 + $1.baseAmount }.money(baseCurrency))")
-            }
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

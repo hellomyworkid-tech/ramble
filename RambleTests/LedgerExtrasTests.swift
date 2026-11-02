@@ -199,3 +199,40 @@ struct AttachmentTests {
         #expect(coffee.rateToBase == hkdTable.rateToBase("USD"))
     }
 }
+
+struct CategoryTotalTests {
+    private let container = AppSchema.makeContainer(inMemory: true)
+
+    private func entry(_ amount: Decimal, _ category: LedgerCategory?, in context: ModelContext) -> LedgerEntry {
+        let entry = LedgerEntry(kind: .expense, amount: amount, currencyCode: "CNY")
+        context.insert(entry)
+        entry.category = category
+        return entry
+    }
+
+    /// 按分类 adds an imported subcategory into its parent and lists the biggest spending first.
+    @Test func subcategoriesCountTowardTheirParentLargestFirst() {
+        let context = container.mainContext
+        let food = LedgerCategory(name: "餐饮", kind: .expense, symbol: "fork.knife", colorHex: "#FF9500", sortOrder: 0)
+        let lunch = LedgerCategory(name: "午餐", kind: .expense, symbol: "fork.knife", colorHex: "#FF9500", sortOrder: 1)
+        let transport = LedgerCategory(name: "交通", kind: .expense, symbol: "car", colorHex: "#007AFF", sortOrder: 2)
+        for category in [food, lunch, transport] { context.insert(category) }
+        lunch.parent = food
+
+        let entries = [entry(30, food, in: context), entry(25, lunch, in: context),
+                       entry(40, transport, in: context), entry(5, nil, in: context)]
+        let totals = CategoryTotal.totals(of: entries)
+        #expect(totals.map(\.category?.name) == ["餐饮", "交通", nil])
+        #expect(totals.map(\.amount) == [55, 40, 5])
+        #expect(totals.map(\.count) == [2, 1, 1])
+    }
+
+    @Test func equalAmountsKeepTheCategoriesOrder() {
+        let context = container.mainContext
+        let home = LedgerCategory(name: "住房", kind: .expense, symbol: "house", colorHex: "#AF52DE", sortOrder: 5)
+        let fun = LedgerCategory(name: "娱乐", kind: .expense, symbol: "gamecontroller", colorHex: "#FF2D55", sortOrder: 2)
+        for category in [home, fun] { context.insert(category) }
+        let totals = CategoryTotal.totals(of: [entry(100, home, in: context), entry(100, fun, in: context)])
+        #expect(totals.map(\.category?.name) == ["娱乐", "住房"])
+    }
+}

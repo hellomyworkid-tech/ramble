@@ -6274,6 +6274,16 @@
         }
       }
     },
+    "按分类" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By Category"
+          }
+        }
+      }
+    },
     "按周" : {
       "localizations" : {
         "en" : {
@@ -6330,6 +6340,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use What I Wrote"
+          }
+        }
+      }
+    },
+    "按日期" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By Date"
           }
         }
       }
@@ -7940,6 +7960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "View"
+          }
+        }
+      }
+    },
+    "查看方式" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group By"
           }
         }
       }
@@ -11180,6 +11210,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This text is sent with your own API key directly to %@, not through our servers. You can turn this off later in AI Settings."
+          }
+        }
+      }
+    },
+    "这段时间没有这一类的记录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing in this category for this period"
           }
         }
       }
