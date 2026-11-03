@@ -7,6 +7,7 @@
 	<true/>
 	<!-- Shared with the widgets: the app writes a small summary they read. -->
 	<!-- iCloud sync: the person's own CloudKit private database, woken by silent pushes. -->
+	<!-- iCloud Drive: the daily automatic backups, in the app's own folder (same container). -->
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.com.zengji.suikouji</string>
@@ -14,6 +15,11 @@
 	<key>com.apple.developer.icloud-services</key>
 	<array>
 		<string>CloudKit</string>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.com.zengji.suikouji</string>
 	</array>
 	<key>aps-environment</key>
 	<string>development</string>

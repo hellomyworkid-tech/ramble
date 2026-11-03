@@ -14,6 +14,7 @@ Ramble (随口记 in Chinese) is an iPhone app for keeping to-dos, expenses and 
 
 - **Your iPhone**: all records are kept in the app's own storage, protected by iOS.
 - **Your iCloud (optional)**: if you turn on Settings › iCloud Sync, records sync through Apple's CloudKit to your private iCloud database, readable only by devices signed in to the same Apple Account. Apple keeps this data under its privacy policy; we have no access to it. You can turn sync off at any time.
+- **Automatic backups**: once a day, a backup is saved in the Ramble folder of your own iCloud Drive (or in Files › On My iPhone › Ramble when iCloud Drive is off), keeping the latest 7. As with sync, Apple keeps these files; we have no access to them. You can turn this off in Settings › Backup & Export, or delete the files in the Files app.
 - **Files you export**: you decide where full backups and CSV files are saved.
 
 ## Voice, photos and AI

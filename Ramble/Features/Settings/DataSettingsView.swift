@@ -1,16 +1,20 @@
 import SwiftData
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// Backups, the ledger as CSV, and entries from other apps.
 struct DataSettingsView: View {
     @Environment(\.modelContext) private var context
-    @AppStorage("backup.includesAttachments") private var includesAttachments = true
+    @AppStorage(AutoBackup.includesAttachmentsKey) private var includesAttachments = true
+    @AppStorage(AutoBackup.enabledKey) private var autoBackupEnabled = true
+    @State private var autoBackup = AutoBackup.shared
+    @State private var backupsInICloud: Bool?
     @State private var exportDocument: ExportDocument?
     @State private var exportName = ""
     @State private var isPreparing = false
     @State private var isPickingBackup = false
-    @State private var pendingRestore: BackupFile?
+    @State private var pendingRestore: PendingRestore?
     @State private var message: String?
     @State private var attachmentBytes: Int64 = 0
 
@@ -19,7 +23,7 @@ struct DataSettingsView: View {
             Section {
                 Toggle(isOn: $includesAttachments) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("包含照片和文件")
+                        Text("备份包含照片和文件")
                         if attachmentBytes > 0 {
                             Text("约 \(ByteCountFormatter.string(fromByteCount: attachmentBytes, countStyle: .file))")
                                 .font(.caption)
@@ -27,6 +31,41 @@ struct DataSettingsView: View {
                         }
                     }
                 }
+            } footer: {
+                Text("自动备份和导出的备份都按这里来。")
+            }
+
+            Section {
+                Toggle("每天自动备份", isOn: $autoBackupEnabled)
+                LabeledContent("上次备份") {
+                    if autoBackup.isRunning {
+                        ProgressView()
+                    } else {
+                        Text(autoBackup.lastBackup.map { DayText.due($0, hasTime: true) } ?? String(localized: "还没有"))
+                    }
+                }
+                Button {
+                    Task { await autoBackup.run(context: context, force: true) }
+                } label: {
+                    Label("立即备份", systemImage: "arrow.clockwise")
+                }
+                .disabled(autoBackup.isRunning)
+                NavigationLink {
+                    AutoBackupsView()
+                } label: {
+                    Label("从自动备份恢复", systemImage: "clock.arrow.circlepath")
+                }
+                if let error = autoBackup.lastError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(ModuleColor.warning)
+                }
+            } header: {
+                Text("自动备份")
+            } footer: {
+                Text(autoBackupFooter)
+            }
+
+            Section {
                 Button {
                     exportBackup()
                 } label: {
@@ -36,12 +75,12 @@ struct DataSettingsView: View {
                 Button {
                     isPickingBackup = true
                 } label: {
-                    Label("从备份恢复", systemImage: "arrow.counterclockwise")
+                    Label("从备份文件恢复", systemImage: "arrow.counterclockwise")
                 }
             } header: {
-                Text("完整备份")
+                Text("备份文件")
             } footer: {
-                Text("待办、账本、账单、到期、笔记和设置里的账户、分类、预算都在一个文件里；打开「包含照片和文件」，所有照片和文件也一起备份。可以存到「文件」或 iCloud 云盘，换手机或重装后用「从备份恢复」找回。")
+                Text("待办、账本、账单、到期、笔记和设置里的账户、分类、预算打成一个压缩包，可以存到「文件」或 iCloud 云盘，换手机或重装后用「从备份文件恢复」找回。以前导出的 .json 备份也能恢复。")
             }
 
             Section {
@@ -64,6 +103,7 @@ struct DataSettingsView: View {
         .navigationTitle("备份与导入导出")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { attachmentBytes = Backup.attachmentBytes(in: context) }
+        .task { backupsInICloud = await AutoBackup.folder().isICloud }
         .overlay {
             if isPreparing {
                 ProgressView("正在准备…")
@@ -76,16 +116,10 @@ struct DataSettingsView: View {
             if case .failure(let error) = result { message = error.localizedDescription }
             exportDocument = nil
         }
-        .fileImporter(isPresented: $isPickingBackup, allowedContentTypes: [.json]) { result in
+        .fileImporter(isPresented: $isPickingBackup, allowedContentTypes: [.zip, .json]) { result in
             pickBackup(result)
         }
-        .confirmationDialog(restoreTitle, isPresented: restoreBinding, titleVisibility: .visible, presenting: pendingRestore) { file in
-            Button("替换为这个备份", role: .destructive) { restore(file) }
-        } message: { file in
-            let when = file.createdAt.formatted(date: .abbreviated, time: .shortened)
-            Text(String(localized: "备份于 \(when)，含 \(file.summary)。手机上现在的全部数据会被替换，不能撤销。")
-                 + (SyncMonitor.shared.isActive ? String(localized: "开着 iCloud 同步，你其他设备上的数据也会一起换成这个备份。") : ""))
-        }
+        .restoreConfirmation($pendingRestore) { message = $0.perform(in: context) }
         .alert("提示", isPresented: messageBinding) {
             Button("好") { message = nil }
         } message: {
@@ -93,17 +127,25 @@ struct DataSettingsView: View {
         }
     }
 
+    private var autoBackupFooter: String {
+        let place = backupsInICloud == false
+            ? String(localized: "存在「文件 › 我的 iPhone › 随口记」；打开 iCloud 云盘后改存到 iCloud 云盘。")
+            : String(localized: "存在 iCloud 云盘的「随口记」文件夹里，换手机后也能找回。")
+        return String(localized: "每天第一次打开随口记时备份一次，内容没变就不重复备份。保留最近 \(AutoBackup.keep) 份，同一张照片只存一份。") + place
+    }
+
     // MARK: Actions
 
     private func exportBackup() {
         isPreparing = true
         Task {
-            // Let the spinner show before the encoding work starts.
+            // Let the spinner show before the work starts.
             try? await Task.sleep(for: .milliseconds(50))
             do {
-                let file = try Backup.make(from: context, includeAttachments: includesAttachments)
-                exportName = Backup.fileName()
-                exportDocument = ExportDocument(data: try Backup.encoder().encode(file), contentType: .json)
+                let url = try await Backup.exportArchive(from: context, includeAttachments: includesAttachments)
+                FileExportPresenter.present(url) { _ in
+                    try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+                }
             } catch {
                 message = error.localizedDescription
             }
@@ -127,38 +169,163 @@ struct DataSettingsView: View {
 
     private func pickBackup(_ result: Result<URL, Error>) {
         do {
-            let url = try result.get()
-            let data = try ExportDocument.read(url)
-            pendingRestore = try Backup.read(data)
+            let opened = try Backup.open(try result.get())
+            pendingRestore = PendingRestore(file: opened.file, source: opened.source)
         } catch {
             message = error.localizedDescription
         }
     }
 
-    private func restore(_ file: BackupFile) {
-        do {
-            try Backup.restore(file, into: context)
-            Task { _ = await NotificationScheduler.shared.reschedule() }
-            message = String(localized: "已恢复：\(file.summary)。")
-        } catch {
-            message = String(localized: "恢复失败，原有数据没有改动。\(error.localizedDescription)")
-        }
-    }
-
     // MARK: Bindings
-
-    private var restoreTitle: String { String(localized: "用这个备份替换现在的数据？") }
 
     private var exportBinding: Binding<Bool> {
         Binding(get: { exportDocument != nil }, set: { if !$0 { exportDocument = nil } })
     }
 
-    private var restoreBinding: Binding<Bool> {
-        Binding(get: { pendingRestore != nil }, set: { if !$0 { pendingRestore = nil } })
-    }
-
     private var messageBinding: Binding<Bool> {
         Binding(get: { message != nil }, set: { if !$0 { message = nil } })
+    }
+}
+
+/// The system's 「存储到“文件”」 sheet for a backup zip. It copies the file where the person
+/// chooses without reading it into memory (SwiftUI's save sheet, handed a file, crashed naming it).
+final class FileExportPresenter: NSObject, UIDocumentPickerDelegate {
+    /// Holds the delegate while the sheet is up (the picker only keeps a weak reference).
+    private static var current: FileExportPresenter?
+    private let onFinish: (_ saved: Bool) -> Void
+
+    private init(onFinish: @escaping (Bool) -> Void) {
+        self.onFinish = onFinish
+    }
+
+    static func present(_ url: URL, onFinish: @escaping (_ saved: Bool) -> Void) {
+        guard let top = UIApplication.shared.topViewController else { return }
+        let presenter = FileExportPresenter(onFinish: onFinish)
+        let picker = UIDocumentPickerViewController(forExporting: [url], asCopy: true)
+        picker.delegate = presenter
+        current = presenter
+        top.present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        finish(saved: true)
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        finish(saved: false)
+    }
+
+    private func finish(saved: Bool) {
+        onFinish(saved)
+        Self.current = nil
+    }
+}
+
+/// A backup picked to restore, with where its photos and files are read from.
+struct PendingRestore {
+    let file: BackupFile
+    let source: BackupAttachmentSource?
+
+    /// Restores it and says how that went.
+    func perform(in context: ModelContext) -> String {
+        do {
+            let result = try Backup.restore(file, into: context, attachmentsFrom: source)
+            Task { _ = await NotificationScheduler.shared.reschedule() }
+            var text = String(localized: "已恢复：\(file.summary)。")
+            if let error = result.attachmentError {
+                text += String(localized: "照片和文件没能全部恢复：\(error)")
+            } else if result.missingAttachments > 0 {
+                text += String(localized: "有 \(result.missingAttachments) 个照片或文件没找到。")
+            }
+            return text
+        } catch {
+            return String(localized: "恢复失败，原有数据没有改动。\(error.localizedDescription)")
+        }
+    }
+}
+
+extension View {
+    /// 「用这个备份替换现在的数据？」 before a restore.
+    func restoreConfirmation(_ pending: Binding<PendingRestore?>, perform: @escaping (PendingRestore) -> Void) -> some View {
+        confirmationDialog(String(localized: "用这个备份替换现在的数据？"),
+                           isPresented: Binding(get: { pending.wrappedValue != nil }, set: { if !$0 { pending.wrappedValue = nil } }),
+                           titleVisibility: .visible, presenting: pending.wrappedValue) { restore in
+            Button("替换为这个备份", role: .destructive) { perform(restore) }
+        } message: { restore in
+            let when = restore.file.createdAt.formatted(date: .abbreviated, time: .shortened)
+            Text(String(localized: "备份于 \(when)，含 \(restore.file.summary)。手机上现在的全部数据会被替换，不能撤销。")
+                 + (SyncMonitor.shared.isActive ? String(localized: "开着 iCloud 同步，你其他设备上的数据也会一起换成这个备份。") : ""))
+        }
+    }
+}
+
+/// The automatic backups, newest first. Picking one brings it down from iCloud Drive if needed,
+/// then restores it after asking.
+struct AutoBackupsView: View {
+    @Environment(\.modelContext) private var context
+    @State private var backups: [AutoBackup.Saved] = []
+    @State private var isLoading = true
+    @State private var preparing: AutoBackup.Saved?
+    @State private var progress = 0.0
+    @State private var pendingRestore: PendingRestore?
+    @State private var message: String?
+
+    var body: some View {
+        List {
+            ForEach(backups) { backup in
+                Button {
+                    prepare(backup)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(DayText.dayWithWeekday(backup.date))
+                                .foregroundStyle(Color.primary)
+                            Text(backup.date.formatted(date: .omitted, time: .shortened))
+                                .font(.footnote)
+                                .foregroundStyle(Color.secondary)
+                        }
+                        Spacer()
+                        if preparing == backup {
+                            ProgressView(value: progress)
+                                .frame(width: 60)
+                        }
+                    }
+                }
+                .disabled(preparing != nil)
+            }
+        }
+        .overlay {
+            if !isLoading, backups.isEmpty {
+                ContentUnavailableView("还没有自动备份", systemImage: "clock.arrow.circlepath",
+                                       description: Text("每天第一次打开随口记时会自动备份。"))
+            }
+        }
+        .navigationTitle("自动备份")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            backups = AutoBackup.saved(in: await AutoBackup.folder().url)
+            isLoading = false
+        }
+        .restoreConfirmation($pendingRestore) { message = $0.perform(in: context) }
+        .alert("提示", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("好") { message = nil }
+        } message: {
+            Text(message ?? "")
+        }
+    }
+
+    private func prepare(_ backup: AutoBackup.Saved) {
+        preparing = backup
+        progress = 0
+        Task {
+            do {
+                let file = try await AutoBackup.download(backup) { progress = $0 }
+                pendingRestore = PendingRestore(file: file, source: BackupFolderSource(folder: backup.url.deletingLastPathComponent()))
+            } catch {
+                message = error.localizedDescription
+            }
+            preparing = nil
+        }
     }
 }
 

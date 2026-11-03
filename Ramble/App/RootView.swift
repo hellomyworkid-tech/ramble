@@ -106,6 +106,11 @@ struct RootView: View {
                 SpeechModelStore.shared.refresh()
                 let base = UserDefaults.standard.string(forKey: AppSettings.baseCurrencyKey) ?? AppSettings.defaultBaseCurrency
                 Task { await ExchangeRates.shared.refreshIfNeeded(base: base) }
+                // The day's backup, a few seconds in so it doesn't slow the app opening.
+                Task {
+                    try? await Task.sleep(for: .seconds(5))
+                    AutoBackup.shared.runIfDue(context: AppSchema.shared.mainContext)
+                }
             case .background:
                 // A deletion still waiting for 撤销 happens now, before the app may be closed.
                 PendingDeletion.shared.commit()

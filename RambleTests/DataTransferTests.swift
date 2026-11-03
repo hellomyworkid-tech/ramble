@@ -124,6 +124,83 @@ struct BackupTests {
             try Backup.read(Data(#"{"format": "ramble-backup", "version": 99}"#.utf8))
         }
     }
+
+    private func temporaryFolder() throws -> URL {
+        let url = URL.temporaryDirectory.appending(path: "backup-test-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// Photos and files sit beside the JSON, and a second backup into the same folder writes none
+    /// of them again.
+    @Test func folderBackupsKeepAttachmentsBesideTheRecords() async throws {
+        let library = try makeLibrary()
+        let folder = try temporaryFolder()
+        let json = try await Backup.write(from: library.mainContext, includeAttachments: true, to: folder, name: "one")
+        let attachments = folder.appending(path: Backup.attachmentsFolder)
+        let written = try FileManager.default.contentsOfDirectory(atPath: attachments.path).sorted()
+        #expect(written.count == 3)  // the receipt, its thumbnail, the PDF
+        let file = try Backup.read(Data(contentsOf: json))
+        #expect(file.version == 2)
+        #expect(file.attachments.allSatisfy { $0.imageData == nil && $0.fileData == nil && $0.file != nil })
+
+        let modified = try FileManager.default.attributesOfItem(atPath: attachments.appending(path: written[0]).path)[.modificationDate] as? Date
+        try await Backup.write(from: library.mainContext, includeAttachments: true, to: folder, name: "two")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: attachments.path).sorted() == written)
+        #expect(try FileManager.default.attributesOfItem(atPath: attachments.appending(path: written[0]).path)[.modificationDate] as? Date == modified)
+
+        let target = AppSchema.makeContainer(inMemory: true)
+        let result = try Backup.restore(file, into: target.mainContext, attachmentsFrom: BackupFolderSource(folder: folder))
+        #expect(result.missingAttachments == 0)
+        let restored = try target.mainContext.fetch(FetchDescriptor<Ramble.Attachment>())
+        #expect(restored.contains { $0.imageData == Data([1, 2, 3, 4]) && $0.thumbnailData == Data([9]) && $0.entry?.note == "午餐" })
+        #expect(restored.contains { $0.fileData == Data("%PDF".utf8) && $0.expiry?.name == "护照" })
+    }
+
+    /// 导出备份 makes a zip; restoring it goes the way a picked file does.
+    @Test func exportedZipRestores() async throws {
+        let library = try makeLibrary()
+        let zip = try await Backup.exportArchive(from: library.mainContext, includeAttachments: true)
+        #expect(zip.pathExtension == "zip")
+        let opened = try Backup.open(zip)
+        #expect(opened.file.summary.contains("2 条账目"))
+
+        let target = AppSchema.makeContainer(inMemory: true)
+        let result = try Backup.restore(opened.file, into: target.mainContext, attachmentsFrom: opened.source)
+        #expect(result.missingAttachments == 0 && result.attachmentError == nil)
+        let restored = try target.mainContext.fetch(FetchDescriptor<Ramble.Attachment>())
+        #expect(restored.count == 2)
+        #expect(restored.contains { $0.imageData == Data([1, 2, 3, 4]) })
+    }
+
+    /// The newest backups stay; a photo only an older one mentioned goes with it.
+    @Test func automaticBackupsKeepTheNewestAndTheirPhotos() async throws {
+        let library = try makeLibrary()
+        let context = library.mainContext
+        let folder = try temporaryFolder()
+        let start = Date(timeIntervalSince1970: 1_790_000_040)  // on the minute, as the file names are
+        try await Backup.write(from: context, includeAttachments: true, to: folder, name: AutoBackup.name(for: start))
+
+        // The receipt is replaced by another photo before the next two backups.
+        let receipt = try #require(try context.fetch(FetchDescriptor<Ramble.Attachment>()).first { $0.kind == .image })
+        let entry = receipt.entry
+        context.delete(receipt)
+        let photo = Ramble.Attachment(imageData: Data([5, 6]), thumbnailData: Data([7]))
+        context.insert(photo)
+        photo.entry = entry
+        try context.save()
+        for day in 1...2 {
+            try await Backup.write(from: context, includeAttachments: true, to: folder,
+                                   name: AutoBackup.name(for: start.addingTimeInterval(Double(day) * 86_400)))
+        }
+
+        await AutoBackup.prune(folder, keep: 2)
+        let saved = AutoBackup.saved(in: folder)
+        #expect(saved.map(\.date) == [start.addingTimeInterval(2 * 86_400), start.addingTimeInterval(86_400)])
+        let files = try FileManager.default.contentsOfDirectory(atPath: folder.appending(path: Backup.attachmentsFolder).path)
+        #expect(files.count == 3)  // the new photo and its thumbnail, the PDF; the old receipt is gone
+        #expect(!files.contains { $0.contains("-4-") && $0.hasSuffix(".jpg") })
+    }
 }
 
 @MainActor

@@ -1,11 +1,14 @@
+import CryptoKit
 import Foundation
 import SwiftData
 
-/// The whole library as one JSON file: every record, how they link up, and (optionally) the
-/// photos and files attached. Restoring replaces everything on the phone with what's in it.
+/// The whole library as one JSON file: every record and how they link up. Photos and files sit
+/// beside it as files of their own (version 1 carried them inside the JSON). Restoring replaces
+/// everything on the phone with what's in it.
 nonisolated struct BackupFile: Codable {
     static let formatName = "ramble-backup"
-    static let currentVersion = 1
+    /// 1: photos and files inside the JSON. 2: beside it, in an attachments folder.
+    static let currentVersion = 2
 
     var format = BackupFile.formatName
     var version = BackupFile.currentVersion
@@ -86,6 +89,8 @@ nonisolated struct BackupFile: Codable {
         var kind: String, imageData: Data?, fileData: Data?, thumbnailData: Data?, fileName: String
         var contentTypeID: String, byteCount: Int, recognizedText: String, createdAt: Date
         var entry: String?, expiry: String?, noteEntry: String?
+        /// Version 2: the photo or file, and its thumbnail, relative to the JSON's folder.
+        var file: String? = nil, thumbnail: String? = nil
     }
 
     /// "128 条账目、12 条待办…" for the restore confirmation.
@@ -114,6 +119,40 @@ enum BackupError: LocalizedError {
     }
 }
 
+/// Where a version-2 backup's photos and files are read from when restoring.
+protocol BackupAttachmentSource {
+    func data(at path: String) throws -> Data
+}
+
+/// A folder holding backups and their attachments folder (automatic backups, or a backup JSON
+/// picked from the app's own iCloud Drive folder).
+nonisolated struct BackupFolderSource: BackupAttachmentSource {
+    let folder: URL
+
+    func data(at path: String) throws -> Data {
+        try Data(contentsOf: folder.appending(path: path), options: .mappedIfSafe)
+    }
+}
+
+/// An exported backup: a zip of one backup folder, read a part at a time.
+nonisolated struct BackupZipSource: BackupAttachmentSource {
+    let archive: ZipArchive
+    /// The folder the zip put everything under, like "ramble-backup/".
+    let prefix: String
+
+    func data(at path: String) throws -> Data {
+        try archive.data(for: prefix + path)
+    }
+}
+
+/// What a restore brought back.
+struct BackupRestoreResult {
+    /// Photos and files the backup mentions but whose file couldn't be read.
+    var missingAttachments = 0
+    /// Saving the photos and files failed partway; the records themselves are restored.
+    var attachmentError: String?
+}
+
 enum Backup {
     static func encoder() -> JSONEncoder {
         let encoder = JSONEncoder()
@@ -133,8 +172,21 @@ enum Backup {
 
     // MARK: Export
 
+    /// Every record with its photos and files inside the JSON, as version 1 did. Kept for small
+    /// libraries and tests; `write` puts the attachments beside it instead.
     static func make(from context: ModelContext, includeAttachments: Bool = true, now: Date = .now) throws -> BackupFile {
-        var ids: [PersistentIdentifier: String] = [:]
+        let ids = RecordIDs()
+        var file = try records(from: context, ids: ids, now: now)
+        if includeAttachments {
+            file.attachments = try context.fetch(FetchDescriptor<Attachment>()).map { record(for: $0, ids: ids, inline: true) }
+        }
+        return file
+    }
+
+    /// Short ids standing in for links between records, the same one each time a record comes up.
+    private final class RecordIDs {
+        private var ids: [PersistentIdentifier: String] = [:]
+
         func id(_ model: (any PersistentModel)?) -> String? {
             guard let model else { return nil }
             if let existing = ids[model.persistentModelID] { return existing }
@@ -142,6 +194,11 @@ enum Backup {
             ids[model.persistentModelID] = new
             return new
         }
+    }
+
+    /// Everything but the attachments.
+    private static func records(from context: ModelContext, ids: RecordIDs, now: Date) throws -> BackupFile {
+        func id(_ model: (any PersistentModel)?) -> String? { ids.id(model) }
         func all<T: PersistentModel>(_ type: T.Type) throws -> [T] { try context.fetch(FetchDescriptor<T>()) }
 
         var file = BackupFile(createdAt: now, baseCurrency: LedgerSummary.baseCurrency)
@@ -191,15 +248,115 @@ enum Backup {
                   subtasks: $0.sortedSubtasks.map { .init(title: $0.title, isDone: $0.isDone, order: $0.order) },
                   sourceEntry: id($0.sourceEntry), sourceQuote: $0.sourceQuote)
         }
+        return file
+    }
+
+    private static func record(for attachment: Attachment, ids: RecordIDs, inline: Bool,
+                               file: String? = nil, thumbnail: String? = nil) -> BackupFile.AttachmentRecord {
+        .init(kind: attachment.kindRaw, imageData: inline ? attachment.imageData : nil, fileData: inline ? attachment.fileData : nil,
+              thumbnailData: inline ? attachment.thumbnailData : nil, fileName: attachment.fileName,
+              contentTypeID: attachment.contentTypeID, byteCount: attachment.byteCount, recognizedText: attachment.recognizedText,
+              createdAt: attachment.createdAt, entry: ids.id(attachment.entry), expiry: ids.id(attachment.expiry),
+              noteEntry: ids.id(attachment.noteEntry), file: file, thumbnail: thumbnail)
+    }
+
+    // MARK: Export to a folder
+
+    /// The folder beside a backup's JSON where its photos and files go.
+    static let attachmentsFolder = "attachments"
+
+    /// Writes the records as `<name>.json` in `folder`, and each photo and file into the
+    /// attachments folder beside it, one at a time, so a large library is never all in memory.
+    /// A photo already there from an earlier backup isn't written again. Returns the JSON.
+    @discardableResult
+    static func write(from context: ModelContext, includeAttachments: Bool, to folder: URL, name: String,
+                      now: Date = .now) async throws -> URL {
+        let ids = RecordIDs()
+        var file = try records(from: context, ids: ids, now: now)
         if includeAttachments {
-            file.attachments = try all(Attachment.self).map {
-                .init(kind: $0.kindRaw, imageData: $0.imageData, fileData: $0.fileData, thumbnailData: $0.thumbnailData,
-                      fileName: $0.fileName, contentTypeID: $0.contentTypeID, byteCount: $0.byteCount,
-                      recognizedText: $0.recognizedText, createdAt: $0.createdAt, entry: id($0.entry),
-                      expiry: id($0.expiry), noteEntry: id($0.noteEntry))
+            let directory = folder.appending(path: attachmentsFolder, directoryHint: .isDirectory)
+            try await BackupFiles.createDirectory(directory)
+            var present = Set(await BackupFiles.names(in: directory))
+            for attachment in try context.fetch(FetchDescriptor<Attachment>()) {
+                let key = attachmentKey(attachment)
+                let main = "\(key).\(fileExtension(of: attachment))"
+                if !present.contains(main), let data = attachment.data {
+                    try await BackupFiles.write(data, to: directory.appending(path: main))
+                    present.insert(main)
+                }
+                var thumbnail: String?
+                if let data = attachment.thumbnailData, !data.isEmpty {
+                    let name = "\(key)-thumb.jpg"
+                    if !present.contains(name) {
+                        try await BackupFiles.write(data, to: directory.appending(path: name))
+                        present.insert(name)
+                    }
+                    thumbnail = "\(attachmentsFolder)/\(name)"
+                }
+                file.attachments.append(record(for: attachment, ids: ids, inline: false,
+                                               file: "\(attachmentsFolder)/\(main)", thumbnail: thumbnail))
+                // Leaves the main thread free between photos, so the app stays responsive.
+                await Task.yield()
             }
         }
-        return file
+        let url = folder.appending(path: "\(name).json")
+        try await BackupFiles.write(try encoder().encode(file), to: url)
+        return url
+    }
+
+    /// Names an attachment by what it holds: when it was added, its size, and its thumbnail (which
+    /// changes when a photo is marked up). A changed photo gets a new file; an unchanged one is
+    /// written once, however many backups mention it.
+    static func attachmentKey(_ attachment: Attachment) -> String {
+        let added = Int64((attachment.createdAt.timeIntervalSince1970 * 1000).rounded())
+        let thumbnail = attachment.thumbnailData.map { data in
+            SHA256.hash(data: data).prefix(6).map { String(format: "%02x", $0) }.joined()
+        } ?? "none"
+        return "\(added)-\(attachment.byteCount)-\(thumbnail)"
+    }
+
+    private static func fileExtension(of attachment: Attachment) -> String {
+        if attachment.kind == .image { return "jpg" }
+        let pathExtension = (attachment.fileName as NSString).pathExtension.lowercased()
+        return pathExtension.isEmpty ? "bin" : pathExtension
+    }
+
+    /// A zip holding one backup, records and attachments, to save to Files or send on.
+    static func exportArchive(from context: ModelContext, includeAttachments: Bool, now: Date = .now) async throws -> URL {
+        let work = URL.temporaryDirectory.appending(path: "backup-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let folder = work.appending(path: archiveFolder, directoryHint: .isDirectory)
+        try await BackupFiles.createDirectory(folder)
+        try await write(from: context, includeAttachments: includeAttachments, to: folder, name: archiveName, now: now)
+        let zip = work.appending(path: "\(fileName(now: now)).zip")
+        try await BackupFiles.zip(folder, to: zip)
+        try? FileManager.default.removeItem(at: folder)
+        return zip
+    }
+
+    /// Inside an exported zip: plain ASCII names, which every zip tool reads the same way.
+    private static let archiveFolder = "ramble-backup"
+    private static let archiveName = "backup"
+
+    // MARK: Open a backup someone picked
+
+    /// A zip from 导出备份, or a JSON: an older backup, or one from the automatic backups folder.
+    static func open(_ url: URL) throws -> (file: BackupFile, source: BackupAttachmentSource?) {
+        if url.pathExtension.lowercased() == "zip" {
+            // A copy inside the app, read a part at a time (mapped, not loaded).
+            let copy = URL.temporaryDirectory.appending(path: "restore-\(UUID().uuidString).zip")
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            try FileManager.default.copyItem(at: url, to: copy)
+            guard let archive = try? ZipArchive(Data(contentsOf: copy, options: .alwaysMapped)),
+                  let json = archive.names.first(where: { $0.hasSuffix("\(archiveName).json") }),
+                  let data = try? archive.data(for: json)
+            else { throw BackupError.notABackup }
+            let file = try read(data)
+            return (file, BackupZipSource(archive: archive, prefix: String(json.dropLast("\(archiveName).json".count))))
+        }
+        let file = try read(ExportDocument.read(url))
+        // A JSON from the automatic backups sits in the app's own folder, attachments beside it.
+        return (file, BackupFolderSource(folder: url.deletingLastPathComponent()))
     }
 
     /// Bytes the attachments would add to a backup, to show before exporting.
@@ -210,8 +367,15 @@ enum Backup {
 
     // MARK: Restore
 
-    /// Replaces everything with the backup's records, in one save: if anything fails, nothing changes.
-    static func restore(_ file: BackupFile, into context: ModelContext) throws {
+    /// Replaces everything with the backup's records, in one save: if anything fails, nothing
+    /// changes. Photos and files then follow in small batches, read from `source` when they sit
+    /// beside the JSON, so a large backup is never all in memory; one that can't be read is skipped.
+    @discardableResult
+    static func restore(_ file: BackupFile, into context: ModelContext,
+                        attachmentsFrom source: BackupAttachmentSource? = nil) throws -> BackupRestoreResult {
+        var entries: [String: LedgerEntry] = [:]
+        var expiries: [String: ExpiryItem] = [:]
+        var noteEntries: [String: NoteEntry] = [:]
         do {
             try deleteEverything(in: context)
 
@@ -275,7 +439,6 @@ enum Backup {
                 outstandings[record.id] = item
             }
 
-            var entries: [String: LedgerEntry] = [:]
             for record in file.entries {
                 let entry = LedgerEntry(kind: EntryKind(rawValue: record.kind) ?? .expense, amount: record.amount,
                                         currencyCode: record.currencyCode, date: record.date, note: record.note,
@@ -300,7 +463,6 @@ enum Backup {
                 budget.category = record.category.flatMap { categories[$0] }
             }
 
-            var expiries: [String: ExpiryItem] = [:]
             for record in file.expiries {
                 let item = ExpiryItem(name: record.name, kind: ExpiryKind(rawValue: record.kind) ?? .other,
                                       expiryDate: record.expiryDate, isDayUncertain: record.isDayUncertain)
@@ -324,7 +486,6 @@ enum Backup {
                 notes[record.id] = note
             }
 
-            var noteEntries: [String: NoteEntry] = [:]
             for record in file.noteEntries {
                 let entry = NoteEntry(text: record.text, date: record.date, source: EntrySource(rawValue: record.source) ?? .manual)
                 entry.sourceRaw = record.source
@@ -357,34 +518,56 @@ enum Backup {
                 }
             }
 
-            for record in file.attachments {
-                let attachment: Attachment
-                if let fileData = record.fileData {
-                    attachment = Attachment(fileData: fileData, fileName: record.fileName, contentTypeID: record.contentTypeID,
-                                            thumbnailData: record.thumbnailData, recognizedText: record.recognizedText)
-                } else if let imageData = record.imageData {
-                    attachment = Attachment(imageData: imageData, thumbnailData: record.thumbnailData ?? Data(),
-                                            recognizedText: record.recognizedText)
-                    attachment.fileName = record.fileName
-                    attachment.contentTypeID = record.contentTypeID
-                } else {
-                    continue
-                }
-                attachment.kindRaw = record.kind
-                attachment.byteCount = record.byteCount
-                attachment.createdAt = record.createdAt
-                context.insert(attachment)
-                attachment.entry = record.entry.flatMap { entries[$0] }
-                attachment.expiry = record.expiry.flatMap { expiries[$0] }
-                attachment.noteEntry = record.noteEntry.flatMap { noteEntries[$0] }
-            }
-
             try context.save()
             UserDefaults.standard.set(file.baseCurrency, forKey: AppSettings.baseCurrencyKey)
         } catch {
             context.rollback()
             throw error
         }
+
+        var result = BackupRestoreResult()
+        do {
+            try restoreAttachments(file.attachments, from: source, entries: entries, expiries: expiries,
+                                   noteEntries: noteEntries, into: context, result: &result)
+        } catch {
+            context.rollback()
+            result.attachmentError = error.localizedDescription
+        }
+        return result
+    }
+
+    private static func restoreAttachments(_ records: [BackupFile.AttachmentRecord], from source: BackupAttachmentSource?,
+                                           entries: [String: LedgerEntry], expiries: [String: ExpiryItem],
+                                           noteEntries: [String: NoteEntry], into context: ModelContext,
+                                           result: inout BackupRestoreResult) throws {
+        for (index, record) in records.enumerated() {
+            let isFile = AttachmentKind(rawValue: record.kind) == .document
+            let content = (isFile ? record.fileData : record.imageData) ?? record.file.flatMap { try? source?.data(at: $0) }
+            guard let content else {
+                result.missingAttachments += 1
+                continue
+            }
+            let thumbnail = record.thumbnailData ?? record.thumbnail.flatMap { try? source?.data(at: $0) }
+            let attachment: Attachment
+            if isFile {
+                attachment = Attachment(fileData: content, fileName: record.fileName, contentTypeID: record.contentTypeID,
+                                        thumbnailData: thumbnail, recognizedText: record.recognizedText)
+            } else {
+                attachment = Attachment(imageData: content, thumbnailData: thumbnail ?? Data(), recognizedText: record.recognizedText)
+                attachment.fileName = record.fileName
+                attachment.contentTypeID = record.contentTypeID
+            }
+            attachment.kindRaw = record.kind
+            attachment.byteCount = record.byteCount
+            attachment.createdAt = record.createdAt
+            context.insert(attachment)
+            attachment.entry = record.entry.flatMap { entries[$0] }
+            attachment.expiry = record.expiry.flatMap { expiries[$0] }
+            attachment.noteEntry = record.noteEntry.flatMap { noteEntries[$0] }
+            // A save every few photos writes them out and lets their bytes go.
+            if index % 20 == 19 { try context.save() }
+        }
+        try context.save()
     }
 
     private static func deleteEverything(in context: ModelContext) throws {

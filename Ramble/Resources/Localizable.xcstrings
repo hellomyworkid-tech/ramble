@@ -2226,6 +2226,16 @@
         }
       }
     },
+    "上次备份" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Backup"
+          }
+        }
+      }
+    },
     "下一个" : {
       "localizations" : {
         "en" : {
@@ -2702,6 +2712,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore from Backup"
+          }
+        }
+      }
+    },
+    "从备份文件恢复" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore from a Backup File"
+          }
+        }
+      }
+    },
+    "从自动备份恢复" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore from an Automatic Backup"
           }
         }
       }
@@ -4746,6 +4776,36 @@
         }
       }
     },
+    "备份包含照片和文件" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include Photos and Files in Backups"
+          }
+        }
+      }
+    },
+    "备份文件" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup Files"
+          }
+        }
+      }
+    },
+    "备份还没从 iCloud 云盘下载下来，请连上网络后再试。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This backup hasn't downloaded from iCloud Drive yet. Connect to the internet and try again."
+          }
+        }
+      }
+    },
     "备注" : {
       "localizations" : {
         "en" : {
@@ -4902,6 +4962,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not enough storage. About %@ is needed, plus some room to spare."
+          }
+        }
+      }
+    },
+    "存在 iCloud 云盘的「随口记」文件夹里，换手机后也能找回。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They're kept in the Ramble folder in iCloud Drive, so a new iPhone can get them back too."
+          }
+        }
+      }
+    },
+    "存在「文件 › 我的 iPhone › 随口记」；打开 iCloud 云盘后改存到 iCloud 云盘。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They're kept in Files › On My iPhone › Ramble, and move to iCloud Drive once iCloud Drive is on."
           }
         }
       }
@@ -5930,6 +6010,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "To-Dos"
+          }
+        }
+      }
+    },
+    "待办、账本、账单、到期、笔记和设置里的账户、分类、预算打成一个压缩包，可以存到「文件」或 iCloud 云盘，换手机或重装后用「从备份文件恢复」找回。以前导出的 .json 备份也能恢复。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To-dos, ledger, bills, expiries, notes, and the accounts, categories and budgets in Settings go into one zip file. Save it to Files or iCloud Drive; after moving to a new iPhone or reinstalling, bring everything back with “Restore from a Backup File”. Older .json backups can be restored too."
           }
         }
       }
@@ -7676,6 +7766,28 @@
         }
       }
     },
+    "有 %lld 个照片或文件没找到。" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo or file wasn't found."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos or files weren't found."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "有照片" : {
       "localizations" : {
         "en" : {
@@ -8524,6 +8636,36 @@
         }
       }
     },
+    "每天第一次打开随口记时会自动备份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ramble backs up the first time you open it each day."
+          }
+        }
+      }
+    },
+    "每天第一次打开随口记时备份一次，内容没变就不重复备份。保留最近 %lld 份，同一张照片只存一份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ramble backs up the first time you open it each day, unless nothing has changed. The latest %lld are kept, each photo stored only once. "
+          }
+        }
+      }
+    },
+    "每天自动备份" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back Up Every Day"
+          }
+        }
+      }
+    },
     "每年" : {
       "localizations" : {
         "en" : {
@@ -9156,6 +9298,16 @@
         }
       }
     },
+    "照片和文件没能全部恢复：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some photos and files couldn't be restored: %@"
+          }
+        }
+      }
+    },
     "照片里有「%@」" : {
       "localizations" : {
         "en" : {
@@ -9448,6 +9600,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Immediately"
+          }
+        }
+      }
+    },
+    "立即备份" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back Up Now"
           }
         }
       }
@@ -9950,6 +10112,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auto"
+          }
+        }
+      }
+    },
+    "自动备份" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic Backups"
+          }
+        }
+      }
+    },
+    "自动备份 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic Backup %@"
+          }
+        }
+      }
+    },
+    "自动备份和导出的备份都按这里来。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to automatic backups and to the ones you export."
           }
         }
       }
@@ -11022,6 +11214,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No notes yet"
+          }
+        }
+      }
+    },
+    "还没有自动备份" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Automatic Backups Yet"
           }
         }
       }
