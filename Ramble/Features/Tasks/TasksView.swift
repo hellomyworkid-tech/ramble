@@ -25,8 +25,9 @@ struct TasksView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
-    @Query private var tasks: [TaskItem]
+    @Query private var queried: [TaskItem]
     @State private var filter: Filter = .today
+    @State private var query = ""
     @State private var editingTask: TaskItem?
     @State private var isCreating = false
     /// The to-do a reminder led to, tinted for a moment.
@@ -36,14 +37,16 @@ struct TasksView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    Section {
-                        Picker("范围", selection: $filter) {
-                            ForEach(Filter.allCases) { Text($0.title).tag($0) }
+                    if !isSearching {
+                        Section {
+                            Picker("范围", selection: $filter) {
+                                ForEach(Filter.allCases) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
                     }
 
                     ForEach(groups) { group in
@@ -54,7 +57,7 @@ struct TasksView: View {
                                     .onTapGesture { editingTask = task }
                                     .swipeActions {
                                         Button("删除", systemImage: "trash", role: .destructive) {
-                                            context.delete(task)
+                                            PendingDeletion.shared.delete([task], message: String(localized: "已删除「\(task.title)」"), in: context)
                                         }
                                     }
                                     .id(task.persistentModelID)
@@ -65,10 +68,16 @@ struct TasksView: View {
                 }
                 .overlay {
                     if groups.isEmpty {
-                        ContentUnavailableView(emptyTitle, systemImage: "checkmark.circle", description: Text("点右上角 +，或者在下方直接说出来"))
+                        if isSearching {
+                            ContentUnavailableView.search(text: query)
+                        } else {
+                            ContentUnavailableView(emptyTitle, systemImage: "checkmark.circle", description: Text("点右上角 +，或者在下方直接说出来"))
+                        }
                     }
                 }
                 .animation(.default, value: filter)
+                .searchable(text: $query, prompt: Text("搜索待办"))
+                .deletionUndoBar()
                 .navigationTitle("待办")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -92,9 +101,17 @@ struct TasksView: View {
         guard case .task(let id) = router.focus else { return }
         router.focus = nil
         guard let task = tasks.first(where: { $0.persistentModelID == id }) else { return }
+        query = ""
         filter = task.isCompleted ? .completed : task.isDueByEndOfToday() ? .today : .upcoming
         proxy.spotlight(id, on: $spotlit)
     }
+
+    /// Every to-do, less one waiting to be deleted.
+    private var tasks: [TaskItem] {
+        queried.filter { !PendingDeletion.shared.hides($0) }
+    }
+
+    private var isSearching: Bool { !query.trimmed.isEmpty }
 
     private var emptyTitle: LocalizedStringResource {
         switch filter {
@@ -107,6 +124,16 @@ struct TasksView: View {
 
     private var groups: [Group] {
         let calendar = Calendar.current
+        if isSearching {
+            // Every filter at once: what's still to do first, then what's done, latest first.
+            let found = tasks.filter { $0.matches(query) }
+            let open = found.filter { !$0.isCompleted }.sorted(by: Self.dueOrder)
+            let done = found.filter(\.isCompleted).sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+            return [
+                Group(id: "found-open", title: String(localized: "未完成"), tasks: open),
+                Group(id: "found-done", title: String(localized: "已完成"), tasks: done),
+            ].filter { !$0.tasks.isEmpty }
+        }
         let open = tasks.filter { !$0.isCompleted }.sorted(by: Self.dueOrder)
         switch filter {
         case .today:

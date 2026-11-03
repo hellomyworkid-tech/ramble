@@ -46,6 +46,14 @@ final class TaskItem {
         (subtasks ?? []).sorted { $0.order < $1.order }
     }
 
+    /// Search: the title, notes, list and subtasks.
+    func matches(_ query: String) -> Bool {
+        let needle = query.trimmed.lowercased()
+        guard !needle.isEmpty else { return true }
+        let words = [title, notes, listName] + (subtasks ?? []).map(\.title)
+        return words.contains { $0.lowercased().contains(needle) }
+    }
+
     func isOverdue(now: Date = .now, calendar: Calendar = .current) -> Bool {
         guard let dueDate, !isCompleted else { return false }
         return hasDueTime ? dueDate < now : dueDate < calendar.startOfDay(for: now)

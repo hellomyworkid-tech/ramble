@@ -22,7 +22,6 @@ struct NoteDetailView: View {
     @State private var editingTask: TaskItem?
     @State private var preview: PreviewFile?
     @State private var photoMessage: String?
-    @State private var confirmDeleteEntry: NoteEntry?
     @State private var documentReading: DocumentReading?
     @State private var highlightingEntry: NoteEntry?
     @State private var showsImportantOnly = false
@@ -70,7 +69,7 @@ struct NoteDetailView: View {
                                 .listRowBackground(entry.isKeyPoint ? ModuleColor.keyPointTint : nil)
                                 .contextMenu { menu(for: entry) }
                                 .swipeActions {
-                                    Button("删除", systemImage: "trash", role: .destructive) { confirmDeleteEntry = entry }
+                                    Button("删除", systemImage: "trash", role: .destructive) { delete(entry) }
                                     Button("编辑", systemImage: "pencil") { editingEntry = entry }
                                         .tint(.gray)
                                 }
@@ -90,6 +89,7 @@ struct NoteDetailView: View {
             }
             // Tapping the entries puts the composer's keyboard away, as in a conversation.
             .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
+            .deletionUndoBar()
             .safeAreaInset(edge: .bottom) { composer }
             .onChange(of: note.entries?.count) {
                 if let last = note.sortedEntries.last {
@@ -171,14 +171,6 @@ struct NoteDetailView: View {
         } message: { provider in
             Text("这段文字会用你自己的 API Key 直接发送到 \(provider.vendor) 处理，不经过我们的服务器。")
         }
-        .deletionAlert(String(localized: "删除这条记录？"), item: $confirmDeleteEntry) { entry in
-            Button("删除", role: .destructive) {
-                context.delete(entry)
-                note.updatedAt = .now
-            }
-        } message: { entry in
-            Text("「\(entry.text.count > 40 ? String(entry.text.prefix(40)) + "…" : entry.text)」\n附带的图片和文件会一起删除，由它生成的待办会保留。")
-        }
         .onChange(of: recorder.transcript) { _, spoken in
             composerText = Punctuation.joining(textBeforeRecording, spoken)
         }
@@ -203,8 +195,18 @@ struct NoteDetailView: View {
     // MARK: - Entries
 
     private var entriesByDay: [Date: [NoteEntry]] {
-        let shown = showsImportantOnly ? note.sortedEntries.filter(\.isImportant) : note.sortedEntries
+        let shown = (showsImportantOnly ? note.sortedEntries.filter(\.isImportant) : note.sortedEntries)
+            .filter { !PendingDeletion.shared.hides($0) }
         return Dictionary(grouping: shown) { Calendar.current.startOfDay(for: $0.date) }
+    }
+
+    /// Straight away, with 撤销 at the bottom for a few seconds; its photos and files go with it,
+    /// the to-dos made from it stay.
+    private func delete(_ entry: NoteEntry) {
+        let excerpt = entry.text.count > 20 ? String(entry.text.prefix(20)) + "…" : entry.text
+        PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(excerpt)」"), in: context) { [note] in
+            note.updatedAt = .now
+        }
     }
 
     /// A photo marked up in the viewer replaces the original; its text is read again for search,
@@ -243,7 +245,7 @@ struct NoteDetailView: View {
         }
         Button("编辑", systemImage: "pencil") { editingEntry = entry }
         Button("拷贝", systemImage: "doc.on.doc") { UIPasteboard.general.string = entry.text }
-        Button("删除", systemImage: "trash", role: .destructive) { confirmDeleteEntry = entry }
+        Button("删除", systemImage: "trash", role: .destructive) { delete(entry) }
     }
 
     // MARK: - Composer

@@ -5260,6 +5260,16 @@
         }
       }
     },
+    "已删除「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted “%@”"
+          }
+        }
+      }
+    },
     "已存储到相册" : {
       "localizations" : {
         "en" : {
@@ -6154,6 +6164,28 @@
         }
       }
     },
+    "找到 %lld 笔" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld entry found"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld entries found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "把一句话交给随口记：AI 整理成待办、账目、账单、到期或笔记，你确认后再保存。不填内容就直接开始听。" : {
       "localizations" : {
         "en" : {
@@ -6608,6 +6640,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reminders show “≈”; enter the actual amount when you pay."
+          }
+        }
+      }
+    },
+    "搜索备注、分类、账户或金额" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search notes, categories, accounts or amounts"
+          }
+        }
+      }
+    },
+    "搜索待办" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search To-Dos"
           }
         }
       }
@@ -7700,6 +7752,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not Set"
+          }
+        }
+      }
+    },
+    "未完成" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
           }
         }
       }

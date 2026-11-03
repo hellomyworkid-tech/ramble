@@ -236,3 +236,75 @@ struct CategoryTotalTests {
         #expect(totals.map(\.category?.name) == ["娱乐", "住房"])
     }
 }
+
+struct SearchAndUndoTests {
+    private let container = AppSchema.makeContainer(inMemory: true)
+
+    /// 账本 search reaches the note, the category and its parent, the accounts, a receipt's text,
+    /// and the amount itself.
+    @Test func ledgerSearchLooksBeyondTheNote() {
+        let context = container.mainContext
+        let food = LedgerCategory(name: "餐饮", kind: .expense, symbol: "fork.knife", colorHex: "#FF9500")
+        let coffee = LedgerCategory(name: "咖啡", kind: .expense, symbol: "cup.and.saucer", colorHex: "#A2845E")
+        let card = Account(name: "招商信用卡", kind: .creditCard)
+        context.insert(food)
+        context.insert(coffee)
+        context.insert(card)
+        coffee.parent = food
+        let entry = LedgerEntry(kind: .expense, amount: 3200, currencyCode: "CNY", note: "下午茶")
+        context.insert(entry)
+        entry.category = coffee
+        entry.account = card
+        let receipt = Attachment(imageData: Data([1]), thumbnailData: Data([1]), recognizedText: "STARBUCKS 星巴克")
+        context.insert(receipt)
+        entry.attachments = [receipt]
+
+        for query in ["下午茶", "咖啡", "餐饮", "招商", "starbucks", "3200", "3,200", " 3200 "] {
+            #expect(entry.matches(query), "\(query)")
+        }
+        #expect(!entry.matches("交通"))
+        #expect(!entry.matches("320"))
+    }
+
+    @Test func taskSearchLooksAtNotesListAndSubtasks() {
+        let context = container.mainContext
+        let task = TaskItem(title: "交季度报告", listName: "工作")
+        task.notes = "找财务要数字"
+        context.insert(task)
+        let step = Subtask(title: "做 PPT", order: 0)
+        context.insert(step)
+        task.subtasks = [step]
+
+        for query in ["季度", "财务", "工作", "ppt"] {
+            #expect(task.matches(query), "\(query)")
+        }
+        #expect(!task.matches("家庭"))
+    }
+
+    /// A deleted record is only hidden until the time is up: 撤销 leaves it untouched, and a
+    /// second deletion lets the first one go through.
+    @Test func deletionWaitsForUndo() throws {
+        let context = container.mainContext
+        let lunch = LedgerEntry(kind: .expense, amount: 35, currencyCode: "CNY", note: "午餐")
+        let taxi = LedgerEntry(kind: .expense, amount: 20, currencyCode: "CNY", note: "打车")
+        context.insert(lunch)
+        context.insert(taxi)
+        try context.save()
+        let pending = PendingDeletion.shared
+
+        pending.delete([lunch], message: "已删除「午餐」", in: context)
+        #expect(pending.hides(lunch))
+        #expect(!pending.hides(taxi))
+        pending.undo()
+        #expect(!pending.hides(lunch))
+        #expect(try context.fetchCount(FetchDescriptor<LedgerEntry>()) == 2)
+
+        pending.delete([lunch], message: "已删除「午餐」", in: context)
+        pending.delete([taxi], message: "已删除「打车」", in: context)
+        #expect(try context.fetchCount(FetchDescriptor<LedgerEntry>()) == 1)
+        #expect(pending.hides(taxi))
+        pending.commit()
+        #expect(try context.fetchCount(FetchDescriptor<LedgerEntry>()) == 0)
+        #expect(pending.current == nil)
+    }
+}

@@ -107,6 +107,8 @@ struct RootView: View {
                 let base = UserDefaults.standard.string(forKey: AppSettings.baseCurrencyKey) ?? AppSettings.defaultBaseCurrency
                 Task { await ExchangeRates.shared.refreshIfNeeded(base: base) }
             case .background:
+                // A deletion still waiting for 撤销 happens now, before the app may be closed.
+                PendingDeletion.shared.commit()
                 NotificationScheduler.scheduleBackgroundRefresh()
                 WidgetBridge.refresh(context: AppSchema.shared.mainContext)
                 // An open model can hold a couple of GB; iOS ends apps that keep that much in the background.

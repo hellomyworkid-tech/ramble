@@ -143,6 +143,17 @@ final class LedgerEntry {
 
     var baseAmount: Decimal { amount * rateToBase }
 
+    /// Search: the note, the category (or its parent), the accounts, text read from a receipt
+    /// photo, or the amount itself (「35」 finds ¥35.00).
+    func matches(_ query: String) -> Bool {
+        let needle = query.trimmed.lowercased()
+        guard !needle.isEmpty else { return true }
+        if let number = Decimal(string: needle.replacingOccurrences(of: ",", with: "")), number == amount { return true }
+        let words = [note, category?.name ?? "", category?.parent?.name ?? "", account?.name ?? "", toAccount?.name ?? ""]
+            + (attachments ?? []).map(\.recognizedText)
+        return words.contains { $0.lowercased().contains(needle) }
+    }
+
     /// Converts through the base currency: this entry's stored rate in, today's rate out.
     func amount(in code: String) -> Decimal {
         if code == currencyCode { return amount }

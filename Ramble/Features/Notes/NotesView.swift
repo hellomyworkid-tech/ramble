@@ -4,7 +4,7 @@ import SwiftUI
 struct NotesView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
-    @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
+    @Query(sort: \Note.updatedAt, order: .reverse) private var queried: [Note]
     @State private var path: [Note] = []
     /// Notes made with "+" here, so one left empty can be thrown away once it's closed.
     @State private var newNotes: [Note] = []
@@ -26,6 +26,7 @@ struct NotesView: View {
                 }
             }
             .overlay { emptyState }
+            .deletionUndoBar()
             .searchable(text: $query, prompt: Text("搜索笔记、图片和文件里的字"))
             .navigationTitle("笔记")
             .toolbar {
@@ -36,9 +37,10 @@ struct NotesView: View {
             .navigationDestination(for: Note.self) { note in
                 NoteDetailView(note: note)
             }
+            // A whole note still asks first: one swipe would otherwise take everything in it.
             .deletionAlert(String(localized: "删除这个笔记？"), item: $pendingDelete) { note in
                 Button("删除「\(note.displayTitle)」", role: .destructive) {
-                    context.delete(note)
+                    PendingDeletion.shared.delete([note], message: String(localized: "已删除「\(note.displayTitle)」"), in: context)
                     pendingDelete = nil
                 }
             } message: { _ in
@@ -57,6 +59,11 @@ struct NotesView: View {
                 }
             }
         }
+    }
+
+    /// Every note, less one waiting to be deleted.
+    private var notes: [Note] {
+        queried.filter { !PendingDeletion.shared.hides($0) }
     }
 
     private var filtered: [Note] {

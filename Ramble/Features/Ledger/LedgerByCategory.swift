@@ -120,6 +120,7 @@ struct CategoryLedgerView: View {
     var body: some View {
         let shown = entries.filter { entry in
             entry.kind == kind && (kind == .transfer || CategoryTotal.top(of: entry)?.persistentModelID == category?.persistentModelID)
+                && !PendingDeletion.shared.hides(entry)
         }
         List {
             Section {
@@ -144,6 +145,7 @@ struct CategoryLedgerView: View {
                 ContentUnavailableView("这段时间没有这一类的记录", systemImage: "tray")
             }
         }
+        .deletionUndoBar()
         .navigationTitle(kind == .transfer ? String(localized: EntryKind.transfer.title) : category?.name ?? String(localized: "未分类"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingEntry) { entry in
@@ -152,8 +154,9 @@ struct CategoryLedgerView: View {
     }
 }
 
-/// Entries in one section per day, newest first: tap one to edit it, swipe to delete. Each day's
-/// header adds up its entries of `totalKind`.
+/// Entries in one section per day, newest first: tap one to edit it, swipe to delete (with
+/// 撤销). Each day's header adds up its entries of `totalKind`, and names the year when it isn't
+/// this one (search results reach back years).
 struct EntriesByDay: View {
     let entries: [LedgerEntry]
     let baseCurrency: String
@@ -172,13 +175,14 @@ struct EntriesByDay: View {
                         .onTapGesture { onEdit(entry) }
                         .swipeActions {
                             Button("删除", systemImage: "trash", role: .destructive) {
-                                context.delete(entry)
+                                PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(entry.displayTitle)」"), in: context)
                             }
                         }
                 }
             } header: {
                 HStack {
-                    Text(DayText.dayWithWeekday(day))
+                    Text(DayText.dayWithWeekday(day)
+                         + (Calendar.current.isDate(day, equalTo: .now, toGranularity: .year) ? "" : " · \(day.formatted(.dateTime.year()))"))
                     Spacer()
                     let sum = (byDay[day] ?? []).filter { $0.kind == totalKind }.reduce(Decimal(0)) { $0 + $1.baseAmount }
                     if sum > 0 {

@@ -11,38 +11,46 @@ struct LedgerView: View {
     @State private var month = Date.now.startOfMonth()
     @State private var isCreating = false
     @State private var route: LedgerRoute?
+    @State private var query = ""
 
     var body: some View {
         NavigationStack {
-            MonthLedgerList(month: $month, baseCurrency: baseCurrency)
-                .navigationTitle("账本")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("统计", systemImage: "chart.bar.xaxis") { route = .stats }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu("管理", systemImage: "slider.horizontal.3") {
-                            Button(String(localized: ScreenName.accounts), systemImage: "creditcard") { route = .accounts }
-                            Button(String(localized: ScreenName.categories), systemImage: "square.grid.2x2") { route = .categories }
-                            Button(String(localized: ScreenName.budgets), systemImage: "chart.pie") { route = .budgets }
-                        }
-                    }
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("记一笔", systemImage: "plus") { isCreating = true }
+            Group {
+                if query.trimmed.isEmpty {
+                    MonthLedgerList(month: $month, baseCurrency: baseCurrency)
+                } else {
+                    LedgerSearchResults(query: query, baseCurrency: baseCurrency)
+                }
+            }
+            .searchable(text: $query, prompt: Text("搜索备注、分类、账户或金额"))
+            .navigationTitle("账本")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("统计", systemImage: "chart.bar.xaxis") { route = .stats }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("管理", systemImage: "slider.horizontal.3") {
+                        Button(String(localized: ScreenName.accounts), systemImage: "creditcard") { route = .accounts }
+                        Button(String(localized: ScreenName.categories), systemImage: "square.grid.2x2") { route = .categories }
+                        Button(String(localized: ScreenName.budgets), systemImage: "chart.pie") { route = .budgets }
                     }
                 }
-                .navigationDestination(item: $route) { route in
-                    switch route {
-                    case .stats: StatsView()
-                    case .accounts: AccountsView()
-                    case .categories: CategoriesView()
-                    case .budgets: BudgetsView()
-                    }
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("记一笔", systemImage: "plus") { isCreating = true }
                 }
-                .sheet(isPresented: $isCreating) {
-                    NavigationStack { EntryEditorView(entry: nil) }
+            }
+            .navigationDestination(item: $route) { route in
+                switch route {
+                case .stats: StatsView()
+                case .accounts: AccountsView()
+                case .categories: CategoriesView()
+                case .budgets: BudgetsView()
                 }
+            }
+            .sheet(isPresented: $isCreating) {
+                NavigationStack { EntryEditorView(entry: nil) }
+            }
         }
     }
 }
@@ -59,7 +67,7 @@ private struct MonthLedgerList: View {
     @Binding var month: Date
     let baseCurrency: String
 
-    @Query private var entries: [LedgerEntry]
+    @Query private var queried: [LedgerEntry]
     @Query private var budgets: [Budget]
     @AppStorage(LedgerGrouping.storageKey) private var grouping = LedgerGrouping.date
     @State private var editingEntry: LedgerEntry?
@@ -70,8 +78,13 @@ private struct MonthLedgerList: View {
         let interval = month.wrappedValue.monthInterval()
         let start = interval.start
         let end = interval.end
-        _entries = Query(filter: #Predicate<LedgerEntry> { $0.date >= start && $0.date < end },
+        _queried = Query(filter: #Predicate<LedgerEntry> { $0.date >= start && $0.date < end },
                          sort: \LedgerEntry.date, order: .reverse)
+    }
+
+    /// The month's entries, less one waiting to be deleted.
+    private var entries: [LedgerEntry] {
+        queried.filter { !PendingDeletion.shared.hides($0) }
     }
 
     var body: some View {
@@ -82,7 +95,14 @@ private struct MonthLedgerList: View {
                 OutstandingSummaryRow(baseCurrency: baseCurrency)
             }
 
-            if !entries.isEmpty {
+            // In the list rather than laid over it, so it sits under the summary however tall that is
+            // (with the search field showing, or a larger text size).
+            if entries.isEmpty {
+                Section {
+                    ContentUnavailableView("这个月还没有记账", systemImage: "book.closed", description: Text("点右上角 +，或者在下方直接说出来"))
+                }
+                .listRowBackground(Color.clear)
+            } else {
                 Section {
                     Picker("查看方式", selection: $grouping) {
                         Text("按日期").tag(LedgerGrouping.date)
@@ -104,12 +124,7 @@ private struct MonthLedgerList: View {
                 categorySection(.transfer)
             }
         }
-        .overlay {
-            if entries.isEmpty {
-                ContentUnavailableView("这个月还没有记账", systemImage: "book.closed", description: Text("点右上角 +，或者在下方直接说出来"))
-                    .padding(.top, 160)
-            }
-        }
+        .deletionUndoBar()
         .sheet(item: $editingEntry) { entry in
             NavigationStack { EntryEditorView(entry: entry) }
         }
@@ -169,6 +184,48 @@ private struct MonthLedgerList: View {
 
     private func total(of kind: EntryKind, in list: [LedgerEntry]) -> Decimal {
         list.filter { $0.kind == kind }.reduce(0) { $0 + $1.baseAmount }
+    }
+}
+
+/// Entries from any month that match the search, newest first, with what they add up to.
+private struct LedgerSearchResults: View {
+    let query: String
+    let baseCurrency: String
+
+    @Query(sort: \LedgerEntry.date, order: .reverse) private var entries: [LedgerEntry]
+    @State private var editingEntry: LedgerEntry?
+
+    var body: some View {
+        let found = entries.filter { !PendingDeletion.shared.hides($0) && $0.matches(query) }
+        let spent = found.filter { $0.kind == .expense }.reduce(Decimal(0)) { $0 + $1.baseAmount }
+        let earned = found.filter { $0.kind == .income }.reduce(Decimal(0)) { $0 + $1.baseAmount }
+        List {
+            if !found.isEmpty {
+                Section {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("找到 \(found.count) 笔")
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            if spent > 0 { Text("支出 \(spent.money(baseCurrency))") }
+                            if earned > 0 {
+                                Text("收入 \(earned.money(baseCurrency))")
+                                    .foregroundStyle(ModuleColor.money)
+                            }
+                        }
+                        .monospacedDigit()
+                    }
+                    .font(.subheadline)
+                }
+            }
+            EntriesByDay(entries: found, baseCurrency: baseCurrency) { editingEntry = $0 }
+        }
+        .overlay {
+            if found.isEmpty { ContentUnavailableView.search(text: query) }
+        }
+        .deletionUndoBar()
+        .sheet(item: $editingEntry) { entry in
+            NavigationStack { EntryEditorView(entry: entry) }
+        }
     }
 }
 

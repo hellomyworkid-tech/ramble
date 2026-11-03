@@ -52,11 +52,10 @@ extension Outstanding {
 struct OutstandingListView: View {
     @Environment(\.modelContext) private var context
     @AppStorage(AppSettings.baseCurrencyKey) private var baseCurrency = AppSettings.defaultBaseCurrency
-    @Query(sort: \Outstanding.createdAt, order: .reverse) private var items: [Outstanding]
+    @Query(sort: \Outstanding.createdAt, order: .reverse) private var queried: [Outstanding]
     @State private var creating: OutstandingDirection?
     @State private var editing: Outstanding?
     @State private var partlySettling: Outstanding?
-    @State private var pendingDelete: Outstanding?
     @State private var justSettled: JustSettled?
 
     /// The entry a tap just recorded, so it can be undone.
@@ -118,10 +117,14 @@ struct OutstandingListView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if let justSettled {
-                undoBanner(justSettled)
+                UndoBar(text: justSettled.text) {
+                    context.delete(justSettled.entry)
+                    self.justSettled = nil
+                }
             }
         }
         .animation(.default, value: justSettled)
+        .deletionUndoBar()
         .sheet(item: $creating) { direction in
             NavigationStack { OutstandingEditorView(item: nil, direction: direction) }
         }
@@ -130,11 +133,6 @@ struct OutstandingListView: View {
         }
         .sheet(item: $partlySettling) { item in
             NavigationStack { SettleOutstandingView(item: item) }
-        }
-        .deletionAlert(pendingDelete.map { String(localized: "删除「\($0.displayTitle)」？") } ?? "", item: $pendingDelete) { item in
-            Button("删除", role: .destructive) { context.delete(item) }
-        } message: { item in
-            Text((item.settlements ?? []).isEmpty ? "删除后不会留下记录。" : "已经记进账本的收入或支出不会删除。")
         }
     }
 
@@ -171,10 +169,10 @@ struct OutstandingListView: View {
                 partlySettling = item
             }
             Button("修改", systemImage: "pencil") { editing = item }
-            Button("删除", systemImage: "trash", role: .destructive) { pendingDelete = item }
+            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
         }
         .swipeActions {
-            Button("删除", systemImage: "trash", role: .destructive) { pendingDelete = item }
+            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
             Button("部分", systemImage: "circle.lefthalf.filled") { partlySettling = item }
                 .tint(.orange)
         }
@@ -199,7 +197,7 @@ struct OutstandingListView: View {
         .contentShape(.rect)
         .onTapGesture { editing = item }
         .swipeActions {
-            Button("删除", systemImage: "trash", role: .destructive) { pendingDelete = item }
+            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
         }
     }
 
@@ -228,28 +226,20 @@ struct OutstandingListView: View {
         justSettled = JustSettled(entry: entry, text: String(localized: "已记一笔\(kind) \(amount.money(item.currencyCode))"))
         let shown = justSettled
         Task {
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(for: .seconds(8))
             if justSettled == shown { justSettled = nil }
         }
     }
 
-    private func undoBanner(_ settled: JustSettled) -> some View {
-        HStack {
-            Label(settled.text, systemImage: "checkmark.circle.fill")
-                .font(.subheadline)
-            Spacer()
-            Button("撤销") {
-                context.delete(settled.entry)
-                justSettled = nil
-            }
-            .font(.subheadline.weight(.semibold))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.regularMaterial, in: .capsule)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+    /// Every item, less one waiting to be deleted.
+    private var items: [Outstanding] {
+        queried.filter { !PendingDeletion.shared.hides($0) }
+    }
+
+    /// With 撤销 at the bottom for a few seconds. Income or spending already recorded from it stays
+    /// in the ledger.
+    private func delete(_ item: Outstanding) {
+        PendingDeletion.shared.delete([item], message: String(localized: "已删除「\(item.displayTitle)」"), in: context)
     }
 
     /// Overdue and soonest first; those without a date after, newest first.

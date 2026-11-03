@@ -15,8 +15,8 @@ struct RemindersView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
-    @Query(sort: \Bill.nextDueDate) private var bills: [Bill]
-    @Query(sort: \ExpiryItem.expiryDate) private var expiries: [ExpiryItem]
+    @Query(sort: \Bill.nextDueDate) private var queriedBills: [Bill]
+    @Query(sort: \ExpiryItem.expiryDate) private var queriedExpiries: [ExpiryItem]
 
     @State private var segment: Segment = .bills
     @State private var editingBill: Bill?
@@ -47,6 +47,7 @@ struct RemindersView: View {
                     }
                 }
                 .overlay { emptyState }
+                .deletionUndoBar()
                 .navigationTitle("提醒")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -96,6 +97,14 @@ struct RemindersView: View {
         }
     }
 
+    /// Bills and expiries, less one waiting to be deleted.
+    private var bills: [Bill] { queriedBills.filter { !PendingDeletion.shared.hides($0) } }
+    private var expiries: [ExpiryItem] { queriedExpiries.filter { !PendingDeletion.shared.hides($0) } }
+
+    private func delete(_ model: some PersistentModel, named name: String) {
+        PendingDeletion.shared.delete([model], message: String(localized: "已删除「\(name)」"), in: context)
+    }
+
     // MARK: - Bills
 
     @ViewBuilder
@@ -127,16 +136,14 @@ struct RemindersView: View {
                             }
                         }
                         .swipeActions {
-                            Button("删除", systemImage: "trash", role: .destructive) {
-                                context.delete(bill)
-                            }
+                            Button("删除", systemImage: "trash", role: .destructive) { delete(bill, named: bill.name) }
                         }
                         .contextMenu {
                             if bill.isActive {
                                 Button("已支付", systemImage: "checkmark.circle") { payingBill = bill }
                             }
                             Button("编辑", systemImage: "pencil") { editingBill = bill }
-                            Button("删除", systemImage: "trash", role: .destructive) { context.delete(bill) }
+                            Button("删除", systemImage: "trash", role: .destructive) { delete(bill, named: bill.name) }
                         }
                         .id(bill.persistentModelID)
                         .spotlit(spotlit == bill.persistentModelID, ModuleColor.bills)
@@ -175,9 +182,7 @@ struct RemindersView: View {
                             }
                         }
                         .swipeActions {
-                            Button("删除", systemImage: "trash", role: .destructive) {
-                                context.delete(item)
-                            }
+                            Button("删除", systemImage: "trash", role: .destructive) { delete(item, named: item.name) }
                         }
                         .id(item.persistentModelID)
                         .spotlit(spotlit == item.persistentModelID, ModuleColor.expiry)
