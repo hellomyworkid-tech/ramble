@@ -2458,12 +2458,12 @@
         }
       }
     },
-    "不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，Apple Pay 付款后就会自动记账：金额、商家和卡片从交易里取。" : {
+    "不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，付款后就会自动记账：金额、商家和卡片从交易里取。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Goes straight into your ledger, no AI. Put it in a Wallet automation in Shortcuts and every Apple Pay payment is logged by itself, with the amount, merchant and card from the transaction."
+            "value" : "Goes straight into your ledger, no AI. Put it in a Wallet automation in Shortcuts and every payment is logged by itself, with the amount, merchant and card from the transaction."
           }
         }
       }

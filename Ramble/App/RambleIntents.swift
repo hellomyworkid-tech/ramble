@@ -45,7 +45,7 @@ struct AddTaskIntent: AppIntent {
 /// Apple Pay payment, handing over the amount, the merchant and the card.
 struct AddExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "记一笔支出"
-    static let description = IntentDescription("不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，Apple Pay 付款后就会自动记账：金额、商家和卡片从交易里取。")
+    static let description = IntentDescription("不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，付款后就会自动记账：金额、商家和卡片从交易里取。")
 
     /// Text rather than a number: a payment's amount comes with its currency sign, which says what to record it in.
     @Parameter(title: "金额", requestValueDialog: "花了多少？")

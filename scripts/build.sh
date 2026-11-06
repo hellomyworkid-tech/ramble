@@ -145,6 +145,7 @@ archive | upload)
     prepare
     quiet xcodebuild "${settings[@]}" -configuration Release -destination 'generic/platform=iOS' \
         -archivePath "$archive" -allowProvisioningUpdates archive
+    python3 scripts/check_intent_text.py "$archive"
     echo "Archived: $archive"
     if [ "$command" = upload ]; then
         quiet xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist scripts/ExportOptions.plist \
