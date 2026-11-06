@@ -95,9 +95,9 @@ struct DocumentReaderView: View {
         } message: { provider in
             Text("识别出的文字会用你自己的 API Key 直接发送到 \(provider.vendor) 处理，不经过我们的服务器。证件号会先在手机上隐去。")
         }
-        .confirmationDialog(originalsTitle, isPresented: $confirmsOriginals, titleVisibility: .visible) {
-            Button("发送原件") { Task { await read(usingOriginals: true) } }
+        .alert(originalsTitle, isPresented: $confirmsOriginals) {
             Button("取消", role: .cancel) {}
+            Button("发送原件") { Task { await read(usingOriginals: true) } }
         } message: {
             Text("原件里的全部内容（包括姓名、证件号）都会用你的 API Key 发送到 \(AISettings.provider.vendor)。")
         }

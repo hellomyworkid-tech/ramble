@@ -106,6 +106,19 @@ struct BudgetBar: View {
     }
 }
 
+/// 删除 among a row's swipe actions, for a list that asks first. Red by hand rather than with the
+/// destructive role: with that, the list takes the row out as soon as it's tapped and expects the
+/// data to go too. While the answer is still to come the two disagree, which lost a row after 取消
+/// and crashed the app on the next 删除.
+struct SwipeDeleteButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button("删除", systemImage: "trash", action: action)
+            .tint(.red)
+    }
+}
+
 extension View {
     /// Asks before deleting one item of a list. A centred alert rather than a confirmation
     /// dialog: on iOS 26 a dialog is a popover pointing at the view it's attached to, which from a

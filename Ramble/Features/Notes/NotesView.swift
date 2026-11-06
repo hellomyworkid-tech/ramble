@@ -84,8 +84,8 @@ struct NotesView: View {
             }
             .tint(ModuleColor.notes)
         }
-        .swipeActions {
-            Button("删除", systemImage: "trash", role: .destructive) { pendingDelete = note }
+        .swipeActions(allowsFullSwipe: false) {
+            SwipeDeleteButton { pendingDelete = note }
         }
         .contextMenu {
             Button(note.isPinned ? "取消置顶" : "置顶", systemImage: note.isPinned ? "pin.slash" : "pin") {

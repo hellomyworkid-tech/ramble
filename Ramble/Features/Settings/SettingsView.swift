@@ -31,6 +31,11 @@ struct SettingsView: View {
                 } label: {
                     Label { Text(ScreenName.budgets) } icon: { Image(systemName: "chart.pie") }
                 }
+                NavigationLink {
+                    ApplePaySetupView()
+                } label: {
+                    Label("Apple Pay 自动记账", systemImage: "wallet.pass")
+                }
             } header: {
                 Text("账本")
             } footer: {
@@ -121,7 +126,8 @@ struct SettingsView: View {
                 }
                 Button("清空所有数据", role: .destructive) { confirmReset = true }
             }
-            .confirmationDialog("清空后只保留默认分类和账户", isPresented: $confirmReset, titleVisibility: .visible) {
+            .alert("清空后只保留默认分类和账户", isPresented: $confirmReset) {
+                Button("取消", role: .cancel) {}
                 Button("清空", role: .destructive) {
                     SeedData.deleteAll(context)
                     SeedData.seedDefaultsIfNeeded(context)

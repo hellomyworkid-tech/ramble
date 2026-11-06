@@ -106,7 +106,8 @@ private struct DeletionUndoBar: ViewModifier {
     func body(content: Content) -> some View {
         let pending = PendingDeletion.shared
         content
-            .safeAreaInset(edge: .bottom) {
+            // Over the list rather than beside it: making room moved the page when it came and went.
+            .overlay(alignment: .bottom) {
                 if let item = pending.current {
                     UndoBar(text: item.message, systemImage: "trash") {
                         withAnimation { pending.undo() }

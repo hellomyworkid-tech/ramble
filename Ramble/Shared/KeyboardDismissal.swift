@@ -3,7 +3,7 @@ import UIKit
 
 /// Tapping the empty space of a list or form, between and around its rows, puts the keyboard
 /// away. Taps on rows go through untouched: a row may hold a button, or the edge of the very
-/// field being typed in.
+/// field being typed in. So do taps on a row's swipe actions, which sit outside its cell.
 final class KeyboardDismissal: NSObject, UIGestureRecognizerDelegate {
     private static let shared = KeyboardDismissal()
 
@@ -26,6 +26,7 @@ final class KeyboardDismissal: NSObject, UIGestureRecognizerDelegate {
         var cell: UICollectionViewCell?
         while let current = view {
             if current is UITextField || current is UITextView || current is UITableViewCell { return false }
+            if String(describing: type(of: current)).contains("SwipeAction") { return false }
             if cell == nil, let found = current as? UICollectionViewCell { cell = found }
             // Lists and forms are collection views. Section headers and footers are cells too, but
             // only rows have an index path.
@@ -57,7 +58,9 @@ struct KeyboardDismissalInstaller: UIViewRepresentable {
     final class WindowWatcher: UIView {
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            if let window { KeyboardDismissal.install(in: window) }
+            guard let window else { return }
+            KeyboardDismissal.install(in: window)
+            SwipeActionGuard.install(in: window)
         }
     }
 }

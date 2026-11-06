@@ -16,6 +16,24 @@ nonisolated struct AIQueryPlan: Codable, Equatable {
 
     init() {}
 
+    /// A plan as AI would have written it, to tell it what the last question looked up.
+    init(_ plan: QueryPlan) {
+        subject = plan.subject.rawValue
+        measure = plan.measure.rawValue
+        categories = plan.categories
+        keywords = plan.keywords
+        taskState = plan.taskState.rawValue
+        if let period = plan.period {
+            if period.unit == .all {
+                self.period = "allTime"
+            } else {
+                self.period = "custom"
+                from = DraftParsing.day(period.start)
+                to = DraftParsing.day(period.end.addingTimeInterval(-1))
+            }
+        }
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         subject = (try? c.decodeIfPresent(String.self, forKey: .subject)) ?? "expense"
@@ -119,13 +137,14 @@ enum AskEngine {
         .init("answer", .string(description: "The answer in one to three short sentences, using only the notes. Numbers and dates exactly as written. If the notes don't say, say so.")),
     ])
 
-    static func planInstructions(categories: [CategoryInfo], now: Date) -> String {
+    /// `previous`: what the question before looked up, when this one may carry on from it.
+    static func planInstructions(categories: [CategoryInfo], now: Date, after previous: QueryPlan? = nil) -> String {
         let expense = categories.filter { !$0.isIncome }.map(\.name).joined(separator: ", ")
         let income = categories.filter(\.isIncome).map(\.name).joined(separator: ", ")
-        return """
+        let instructions = """
         Someone asks a question about their own records in a personal organizer: spending, income, to-dos, bills, \
         expiry dates and notes. Say what to look up; don't answer it, the app counts the answer itself.
-        Now: \(now.formatted(.iso8601.year().month().day())) (\(now.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "en_US")))))
+        Now: \(DraftParsing.day(now)) (\(now.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "en_US")))))
         Expense categories: \(expense)
         Income categories: \(income)
         subject: expense, income, balance (income minus spending), tasks (to-dos), bills (payments due), \
@@ -134,6 +153,12 @@ enum AskEngine {
         period: the time asked about, or none. Use custom with from and to (yyyy-MM-dd) for holidays and other ranges.
         categories: only names from the lists above. keywords: short words to search notes for. taskState: open, done or overdue.
         Example: 国庆打车花了多少 → {"subject":"expense","measure":"total","period":"custom","from":"2026-10-01","to":"2026-10-07","categories":["交通"],"keywords":["打车"],"taskState":"open"}
+        """
+        guard let previous, let data = try? JSONEncoder().encode(AIQueryPlan(previous)) else { return instructions }
+        return instructions + """
+
+        The question before this one looked up: \(String(decoding: data, as: UTF8.self))
+        If this question carries on from it (那星巴克呢, and last week?), keep what it doesn't change. If it's about something else, ignore that.
         """
     }
 
@@ -153,15 +178,27 @@ enum AskEngine {
         }
     }
 
-    static func ask(_ question: String, context: ModelContext, now: Date = .now) async throws -> AskAnswer {
+    /// `previous` is the question before this one in the conversation: what it looked up fills in
+    /// what this one leaves out.
+    static func ask(_ question: String, after previous: AskRecord? = nil, context: ModelContext, now: Date = .now) async throws -> AskAnswer {
         let categories = categories(in: context)
-        let rules = QuestionParser.parse(question, categories: categories, now: now)
+        var earlier = previous?.answer.plan
+        // 「本周」「上个月」 mean something else on another day, so the time stays behind.
+        if let previous, !Calendar.current.isDate(previous.date, inSameDayAs: now) { earlier?.period = nil }
+        let rules = QuestionParser.parse(question, categories: categories, now: now, after: earlier)
         var plan = rules.plan
         var source = AskAnswer.Source.rules
 
         if !rules.confident {
             do {
-                let (aiPlan, aiSource) = try await planWithAI(question, categories: categories, now: now)
+                let (read, aiSource) = try await planWithAI(question, categories: categories, after: rules.carriesOn ? earlier : nil, now: now)
+                var aiPlan = read
+                let sameTopic = rules.plan?.subject.topic == aiPlan.subject.topic
+                aiPlan.period = rules.period ?? aiPlan.period ?? (sameTopic ? rules.plan?.period : nil)
+                // 「上次呢」 gives AI no word to search notes for; the last question's still apply.
+                if aiPlan.subject == .notes, aiPlan.keywords.isEmpty, rules.carriesOn, earlier?.subject == .notes {
+                    aiPlan.keywords = earlier?.keywords ?? []
+                }
                 plan = aiPlan
                 source = .ai(aiSource)
             } catch {
@@ -173,15 +210,21 @@ enum AskEngine {
             return AskAnswer(headline: String(localized: "没太听懂，换个说法试试？比如「这个月吃饭花了多少」「这周还有哪些待办」。"))
         }
         if plan.subject == .notes {
-            return try await answerFromNotes(question, plan: plan, context: context, planSource: source)
+            let asked = rules.carriesOn && earlier?.subject == .notes ? previous?.question : nil
+            return try await answerFromNotes(question, after: asked, plan: plan, context: context, planSource: source)
         }
         var answer = QueryRunner.run(plan, context: context, now: now)
         answer.source = source
         return answer
     }
 
-    static func planWithAI(_ question: String, categories: [CategoryInfo], now: Date) async throws -> (QueryPlan, CaptureSource) {
-        let instructions = planInstructions(categories: categories, now: now)
+    static func planWithAI(_ question: String, categories: [CategoryInfo], after previous: QueryPlan? = nil, now: Date) async throws -> (QueryPlan, CaptureSource) {
+        #if DEBUG
+        if MockCapture.isEnabled {
+            return (QueryPlan(subject: .expense, measure: .top, period: PeriodResolver.preset("thisMonth", now: now)), .onDevice)
+        }
+        #endif
+        let instructions = planInstructions(categories: categories, now: now, after: previous)
         let (raw, source) = try await AIRouter.run(
             onDevice: {
                 let session = LocalAI.makeSession(instructions: instructions)
@@ -200,14 +243,16 @@ enum AskEngine {
     }
 
     /// Finds the entries that mention the question's words and has AI answer from those alone.
-    static func answerFromNotes(_ question: String, plan: QueryPlan, context: ModelContext,
+    /// `earlier` is the note question before it, for one that carries on: 「上次呢」.
+    static func answerFromNotes(_ question: String, after earlier: String? = nil, plan: QueryPlan, context: ModelContext,
                                 planSource: AskAnswer.Source) async throws -> AskAnswer {
         let entries = QueryRunner.matchingEntries(plan.keywords, context: context)
         guard !entries.isEmpty else {
             return AskAnswer(headline: String(localized: "笔记里没找到相关的内容。"), source: planSource, plan: plan)
         }
-        let input = String(localized: "问题：\(question)") + "\n\n" + entries.enumerated().map { index, entry in
-            "[\(index + 1)] \(entry.note?.displayTitle ?? "笔记") · \(entry.date.formatted(.iso8601.year().month().day()))\n\(DocumentText.condensed(entry.text, limit: 600))"
+        let before = earlier.map { String(localized: "上一个问题：\($0)") + "\n" } ?? ""
+        let input = before + String(localized: "问题：\(question)") + "\n\n" + entries.enumerated().map { index, entry in
+            "[\(index + 1)] \(entry.note?.displayTitle ?? "笔记") · \(DraftParsing.day(entry.date))\n\(DocumentText.condensed(entry.text, limit: 600))"
         }.joined(separator: "\n\n")
         var answer = AskAnswer(headline: "", plan: plan)
         answer.items = entries.map(QueryRunner.noteItem)

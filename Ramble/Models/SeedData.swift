@@ -110,8 +110,9 @@ enum SeedData {
             (5, "housing", 3500, String(localized: "房租"), .debitCard),
             (6, "health", 120, String(localized: "体检"), .debitCard),
         ]
-        for (offset, key, amount, note, kind) in spending where offset < dayOfMonth {
-            let entry = LedgerEntry(kind: .expense, amount: amount, currencyCode: currency, date: day(-offset, 12 + offset % 6), note: note)
+        for (offset, key, amount, note, kind) in spending {
+            // Early in a month they bunch up on the 1st, so the month still looks lived in.
+            let entry = LedgerEntry(kind: .expense, amount: amount, currencyCode: currency, date: day(-min(offset, dayOfMonth - 1), 12 + offset % 6), note: note)
             context.insert(entry)
             entry.category = category(key)
             entry.account = account(kind)

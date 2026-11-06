@@ -105,6 +105,7 @@ struct CategoryLedgerView: View {
 
     @Query private var entries: [LedgerEntry]
     @State private var editingEntry: LedgerEntry?
+    @State private var confirmDelete: LedgerEntry?
 
     init(kind: EntryKind, category: LedgerCategory?, interval: DateInterval, periodTitle: String, baseCurrency: String) {
         self.kind = kind
@@ -138,7 +139,7 @@ struct CategoryLedgerView: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            EntriesByDay(entries: shown, baseCurrency: baseCurrency, totalKind: kind) { editingEntry = $0 }
+            EntriesByDay(entries: shown, baseCurrency: baseCurrency, totalKind: kind, confirmDelete: $confirmDelete) { editingEntry = $0 }
         }
         .overlay {
             if shown.isEmpty {
@@ -146,6 +147,7 @@ struct CategoryLedgerView: View {
             }
         }
         .deletionUndoBar()
+        .entryDeletionAlert($confirmDelete)
         .navigationTitle(kind == .transfer ? String(localized: EntryKind.transfer.title) : category?.name ?? String(localized: "未分类"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingEntry) { entry in
@@ -154,16 +156,16 @@ struct CategoryLedgerView: View {
     }
 }
 
-/// Entries in one section per day, newest first: tap one to edit it, swipe to delete (with
-/// 撤销). Each day's header adds up its entries of `totalKind`, and names the year when it isn't
-/// this one (search results reach back years).
+/// Entries in one section per day, newest first: tap one to edit it, swipe to delete (it asks
+/// first, then there's 撤销). Each day's header adds up its entries of `totalKind`, and names the
+/// year when it isn't this one (search results reach back years).
 struct EntriesByDay: View {
     let entries: [LedgerEntry]
     let baseCurrency: String
     var totalKind = EntryKind.expense
+    /// Set by 删除. The list this is in shows the question, with `entryDeletionAlert`.
+    @Binding var confirmDelete: LedgerEntry?
     let onEdit: (LedgerEntry) -> Void
-
-    @Environment(\.modelContext) private var context
 
     var body: some View {
         let byDay = Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.date) }
@@ -173,10 +175,8 @@ struct EntriesByDay: View {
                     EntryRow(entry: entry, baseCurrency: baseCurrency)
                         .contentShape(.rect)
                         .onTapGesture { onEdit(entry) }
-                        .swipeActions {
-                            Button("删除", systemImage: "trash", role: .destructive) {
-                                PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(entry.displayTitle)」"), in: context)
-                            }
+                        .swipeActions(allowsFullSwipe: false) {
+                            SwipeDeleteButton { confirmDelete = entry }
                         }
                 }
             } header: {
@@ -194,6 +194,28 @@ struct EntriesByDay: View {
                     }
                 }
             }
+        }
+    }
+}
+
+extension View {
+    /// What 删除 in `EntriesByDay` asks, for the list it's in: `EntriesByDay` is only rows.
+    func entryDeletionAlert(_ entry: Binding<LedgerEntry?>) -> some View {
+        modifier(EntryDeletionAlert(entry: entry))
+    }
+}
+
+private struct EntryDeletionAlert: ViewModifier {
+    @Binding var entry: LedgerEntry?
+    @Environment(\.modelContext) private var context
+
+    func body(content: Content) -> some View {
+        content.deletionAlert(String(localized: "删除这笔记录？"), item: $entry) { entry in
+            Button("删除", role: .destructive) {
+                PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(entry.displayTitle)」"), in: context)
+            }
+        } message: { entry in
+            Text("「\(entry.displayTitle + " " + entry.amount.money(entry.currencyCode))」")
         }
     }
 }

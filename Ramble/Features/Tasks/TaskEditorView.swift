@@ -152,7 +152,8 @@ struct TaskEditorView: View {
                     .disabled(title.trimmed.isEmpty)
             }
         }
-        .confirmationDialog("删除这条待办？", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("删除这条待办？", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
             Button("删除", role: .destructive, action: delete)
         }
         .onAppear {

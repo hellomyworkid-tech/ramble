@@ -41,6 +41,43 @@ struct AddTaskIntent: AppIntent {
     }
 }
 
+/// "记一笔支出": saved straight away, no AI. What a Wallet automation in Shortcuts runs after an
+/// Apple Pay payment, handing over the amount, the merchant and the card.
+struct AddExpenseIntent: AppIntent {
+    static let title: LocalizedStringResource = "记一笔支出"
+    static let description = IntentDescription("不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，Apple Pay 付款后就会自动记账：金额、商家和卡片从交易里取。")
+
+    /// Text rather than a number: a payment's amount comes with its currency sign, which says what to record it in.
+    @Parameter(title: "金额", requestValueDialog: "花了多少？")
+    var amount: String
+
+    @Parameter(title: "商家")
+    var merchant: String?
+
+    @Parameter(title: "卡片")
+    var card: String?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("记一笔支出 \(\.$amount)") {
+            \.$merchant
+            \.$card
+        }
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        let context = AppSchema.shared.mainContext
+        guard let payment = PaymentAmount(amount, baseCurrency: LedgerSummary.baseCurrency) else {
+            let text = String(localized: "「\(amount)」不是支出金额，没有记账。")
+            return .result(value: text, dialog: IntentDialog(stringLiteral: text))
+        }
+        let entry = try PaymentEntry.record(payment, merchant: merchant ?? "", card: card ?? "", in: context)
+        WidgetBridge.refresh(context: context)
+        let text = String(localized: "已记一笔：\(entry.displayTitle) \(entry.amount.money(entry.currencyCode))")
+        return .result(value: text, dialog: IntentDialog(stringLiteral: text))
+    }
+}
+
 /// "这个月花了多少": the total, and how much of the budget is left.
 struct SpendingIntent: AppIntent {
     static let title: LocalizedStringResource = "查询支出"
@@ -141,7 +178,8 @@ struct AskQuestionIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         do {
             let answer = try await AskEngine.ask(question, context: AppSchema.shared.mainContext)
-            AskHistory.append(AskRecord(date: .now, question: question, answer: answer, currency: LedgerSummary.baseCurrency))
+            // Each one stands alone, so it's a conversation of its own.
+            AskHistory.add(AskRecord(date: .now, question: question, answer: answer, currency: LedgerSummary.baseCurrency), to: UUID())
             var spoken = answer.headline
             if let first = answer.details.first { spoken += String(localized: "\(first)。") }
             if answer.headline.hasSuffix("：") {

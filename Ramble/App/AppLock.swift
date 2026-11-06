@@ -146,6 +146,8 @@ final class AppLock {
             }
         }
         UserDefaults.standard.set(enabled, forKey: Self.enabledKey)
+        // Search would show what the lock hides, so it leaves the index and comes back with it off.
+        SpotlightIndex.shared.setNeedsRefresh()
         isLocked = false
         lastError = nil
         return true

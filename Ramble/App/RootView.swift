@@ -1,4 +1,6 @@
 import Combine
+import CoreSpotlight
+import StoreKit
 import SwiftData
 import SwiftUI
 
@@ -8,6 +10,7 @@ enum AppTab: String, Hashable {
 
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
     @State private var router = AppRouter.shared
     @State private var isCapturing = false
     @State private var captureStart: CaptureStart?
@@ -44,7 +47,19 @@ struct RootView: View {
         .captureAccessory(isEnabled: !router.hidesCaptureBar) {
             CaptureBar { isCapturing = true }
         }
-        .sheet(isPresented: $isCapturing, onDismiss: { captureStart = nil }) {
+        .sheet(isPresented: $isCapturing, onDismiss: {
+            if case .shared(let item) = captureStart { ShareInbox.shared?.remove(item) }
+            captureStart = nil
+            if ReviewPrompt.isDue {
+                ReviewPrompt.isDue = false
+                requestReview()
+            }
+            // Something else may have been shared meanwhile.
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                openNextShare()
+            }
+        }) {
             CaptureSheet(start: captureStart)
         }
         .sheet(item: $askRequest) { request in
@@ -64,6 +79,11 @@ struct RootView: View {
             present { reportKind = kind }
         }
         .onOpenURL { router.open($0) }
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            if let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String {
+                SpotlightIndex.open(id, router: router, context: AppSchema.shared.mainContext)
+            }
+        }
         .onChange(of: router.pendingCapture, initial: true) { _, start in
             guard let start else { return }
             router.pendingCapture = nil
@@ -89,8 +109,12 @@ struct RootView: View {
         .background(KeyboardDismissalInstaller())
         .environment(router)
         .onChange(of: router.focus) { _, focus in
-            // A notification tap should land on the record, not behind the capture sheet.
-            if focus != nil { isCapturing = false }
+            // A notification or search result should land on the record, not behind a sheet.
+            if focus != nil {
+                isCapturing = false
+                askRequest = nil
+                reportKind = nil
+            }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             AppLock.shared.scenePhaseChanged(to: phase)
@@ -101,6 +125,8 @@ struct RootView: View {
                 WidgetBridge.applyPendingCompletions(context: AppSchema.shared.mainContext)
                 WidgetBridge.setNeedsRefresh()
                 NotificationScheduler.shared.setNeedsReschedule()
+                SpotlightIndex.shared.setNeedsRefresh()
+                openNextShare()
                 // Downloads that finished in the background get checked now the app is in front.
                 OpenModelStore.shared.refresh()
                 SpeechModelStore.shared.refresh()
@@ -127,6 +153,7 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             NotificationScheduler.shared.setNeedsReschedule()
             WidgetBridge.setNeedsRefresh()
+            SpotlightIndex.shared.setNeedsRefresh()
         }
     }
 }
@@ -136,6 +163,12 @@ extension RootView {
     fileprivate func refreshDay() {
         let today = Calendar.current.startOfDay(for: .now)
         if today != day { day = today }
+    }
+
+    /// What was shared from another app while this one was away, one at a time.
+    fileprivate func openNextShare() {
+        guard !isCapturing, askRequest == nil, reportKind == nil, let item = ShareInbox.shared?.pending().first else { return }
+        router.startCapture(.shared(item))
     }
 
     /// Shows one sheet at a time: whatever is up closes first.

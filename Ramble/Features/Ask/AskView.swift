@@ -30,15 +30,17 @@ struct AskView: View {
         }
     }
 
+    @State private var conversationID = UUID()
     @State private var turns: [Turn] = []
     @State private var loadedHistory = false
-    @State private var confirmClear = false
+    @State private var showsConversations = false
     @State private var text = ""
     @State private var isAsking = false
     @State private var recorder = SpeechRecorder()
     @State private var textBeforeRecording = ""
     @State private var consentProvider: AIProvider?
     @State private var pendingQuestion = ""
+    @State private var pendingPrevious: AskRecord?
     @FocusState private var focused: Bool
     private let initialQuestion: String?
     @State private var askedInitial = false
@@ -58,7 +60,7 @@ struct AskView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 20) {
-                        if turns.isEmpty { intro }
+                        if turns.isEmpty, !isAsking { intro }
                         ForEach(Array(turns.enumerated()), id: \.element.id) { index, turn in
                             if index == 0 || !Calendar.current.isDate(turn.date, inSameDayAs: turns[index - 1].date) {
                                 Text(DayText.due(turn.date, hasTime: false))
@@ -67,21 +69,26 @@ struct AskView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             TurnView(question: turn.question, record: turn.record, error: turn.error,
-                                     isEarlier: turn.isEarlier, open: open, askAgain: { ask(turn.question) })
+                                     isEarlier: turn.isEarlier, open: open, askAgain: { askAgain(turn) })
                                 .id(turn.id)
                                 .contextMenu { menu(for: turn) }
                         }
                         if isAsking {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text("正在查…")
-                                    .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 10) {
+                                QuestionBubble(text: pendingQuestion)
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("正在查…")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                             .id("progress")
                         }
                     }
                     .padding()
                 }
+                // A different conversation opens at its latest answer, not where the last one was.
+                .id(conversationID)
                 .scrollDismissesKeyboard(.interactively)
                 // So does a tap on the answers.
                 .simultaneousGesture(TapGesture().onEnded { focused = false })
@@ -89,6 +96,9 @@ struct AskView: View {
                 .background(Color(.systemGroupedBackground))
                 .onChange(of: turns.count) { _, _ in
                     withAnimation { proxy.scrollTo(turns.last?.id, anchor: .top) }
+                }
+                .onChange(of: isAsking) { _, asking in
+                    if asking { withAnimation { proxy.scrollTo("progress", anchor: .bottom) } }
                 }
             }
             .safeAreaInset(edge: .bottom) { composer }
@@ -98,20 +108,27 @@ struct AskView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭", systemImage: "xmark", role: .close) { dismiss() }
                 }
-                if !turns.isEmpty {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("清空记录", systemImage: "trash") { confirmClear = true }
-                            .disabled(isAsking)
-                    }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("历史对话", systemImage: "clock.arrow.circlepath") { showsConversations = true }
+                        .disabled(isAsking)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("新对话", systemImage: "square.and.pencil", action: startNewConversation)
+                        .disabled(turns.isEmpty || isAsking)
                 }
             }
-            .confirmationDialog("清空所有问答记录？", isPresented: $confirmClear, titleVisibility: .visible) {
-                Button("清空记录", role: .destructive) {
-                    turns = []
-                    AskHistory.clear()
+            .navigationDestination(isPresented: $showsConversations) {
+                AskConversationsView(currentID: conversationID) { conversation in
+                    show(conversation)
+                    showsConversations = false
                 }
-            } message: {
-                Text("只删除问一问里的记录，不会动你的账目、待办和笔记。")
+            }
+            .onChange(of: showsConversations) { _, showing in
+                // The one showing may have been deleted back there.
+                if !showing, turns.contains(where: { $0.record != nil }),
+                   !AskHistory.load().contains(where: { $0.id == conversationID }) {
+                    startNewConversation()
+                }
             }
             .onChange(of: recorder.transcript) { _, spoken in
                 let base = textBeforeRecording
@@ -120,11 +137,12 @@ struct AskView: View {
             .onAppear {
                 if !loadedHistory {
                     loadedHistory = true
-                    turns = AskHistory.load().map(Turn.init(earlier:))
+                    // A question asked from elsewhere starts its own conversation.
+                    if initialQuestion == nil, let recent = AskHistory.resumable() { show(recent) }
                 }
                 if let initialQuestion, !askedInitial {
                     askedInitial = true
-                    ask(initialQuestion)
+                    ask(initialQuestion, after: nil)
                 }
             }
             .onDisappear { Task { await recorder.cancel() } }
@@ -133,11 +151,11 @@ struct AskView: View {
                    presenting: consentProvider) { _ in
                 Button("同意并继续") {
                     AISettings.hasCloudConsent = true
-                    ask(pendingQuestion)
+                    ask(pendingQuestion, after: pendingPrevious)
                 }
                 Button("取消", role: .cancel) {}
             } message: { provider in
-                Text("这个问题（问笔记内容时还有相关的几段笔记）会用你自己的 API Key 直接发送到 \(provider.vendor)。账目数字始终在手机上计算。")
+                Text("这个问题（接着问时还有上一问，问笔记内容时还有相关的几段笔记）会用你自己的 API Key 直接发送到 \(provider.vendor)。账目数字始终在手机上计算。")
             }
         }
     }
@@ -151,7 +169,7 @@ struct AskView: View {
                 .foregroundStyle(.secondary)
             FlowLayout(spacing: 8) {
                 ForEach(Self.suggestions, id: \.self) { suggestion in
-                    Button(suggestion) { ask(suggestion) }
+                    Button(suggestion) { ask(suggestion, after: nil) }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
                         .controlSize(.small)
@@ -168,11 +186,15 @@ struct AskView: View {
                 if recorder.state == .recording || recorder.state == .finishing {
                     LiveTranscript(text: text, placeholder: "正在听…", maxLines: 4)
                 } else {
-                    TextField("问点什么", text: $text, axis: .vertical)
+                    TextField(turns.isEmpty ? "问点什么" : "接着问，比如「上个月呢」", text: $text, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($focused)
                         .submitLabel(.send)
-                        .onSubmit { ask(text) }
+                        .onSubmit { ask(text, after: latestRecord) }
+                        // In a box that grows, the keyboard's send key types a line break instead.
+                        .onChange(of: text) { old, new in
+                            if new.hasSuffix("\n"), !old.hasSuffix("\n") { ask(new, after: latestRecord) }
+                        }
                 }
                 if !text.isEmpty, recorder.state == .idle {
                     Button("清空", systemImage: "xmark.circle.fill") {
@@ -188,7 +210,7 @@ struct AskView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 20))
-            Button("发送", systemImage: "arrow.up.circle.fill") { ask(text) }
+            Button("发送", systemImage: "arrow.up.circle.fill") { ask(text, after: latestRecord) }
                 .labelStyle(.iconOnly)
                 .font(.title)
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isAsking)
@@ -204,7 +226,7 @@ struct AskView: View {
         Task {
             if recorder.state == .recording {
                 await recorder.stop()
-                if !text.trimmingCharacters(in: .whitespaces).isEmpty { ask(text) }
+                if !text.trimmingCharacters(in: .whitespaces).isEmpty { ask(text, after: latestRecord) }
                 return
             }
             guard recorder.state == .idle else { return }
@@ -214,19 +236,45 @@ struct AskView: View {
         }
     }
 
-    private func ask(_ question: String) {
+    /// What a new question carries on from: the latest answer that looked something up.
+    private var latestRecord: AskRecord? {
+        turns.last { $0.record?.answer.plan != nil }?.record
+    }
+
+    /// Asks it again as it was first asked, so a follow-up still follows the same question.
+    private func askAgain(_ turn: Turn) {
+        let index = turns.firstIndex { $0.id == turn.id } ?? turns.endIndex
+        ask(turn.question, after: turns[..<index].last { $0.record?.answer.plan != nil }?.record)
+    }
+
+    private func startNewConversation() {
+        Task { await recorder.cancel() }
+        conversationID = UUID()
+        turns = []
+        text = ""
+        textBeforeRecording = ""
+    }
+
+    private func show(_ conversation: AskConversation) {
+        conversationID = conversation.id
+        turns = conversation.records.map(Turn.init(earlier:))
+    }
+
+    private func ask(_ question: String, after previous: AskRecord?) {
         let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isAsking else { return }
         text = ""
         focused = false
         isAsking = true
         pendingQuestion = question
+        pendingPrevious = previous
+        let conversation = conversationID
         Task {
             if recorder.state == .recording { await recorder.stop() }
             let started = ContinuousClock.now
             var turn = Turn(question: question)
             do {
-                let answer = try await AskEngine.ask(question, context: context)
+                let answer = try await AskEngine.ask(question, after: previous, context: context)
                 var record = AskRecord(id: turn.id, date: turn.date, question: question, answer: answer,
                                        currency: LedgerSummary.baseCurrency)
                 if case .ai = answer.source {
@@ -234,7 +282,7 @@ struct AskView: View {
                     record.seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
                 }
                 turn.record = record
-                AskHistory.append(record)
+                AskHistory.add(record, to: conversation)
             } catch AIError.needsConsent(let provider) {
                 isAsking = false
                 consentProvider = provider
@@ -249,7 +297,7 @@ struct AskView: View {
 
     @ViewBuilder
     private func menu(for turn: Turn) -> some View {
-        Button("重新问", systemImage: "arrow.clockwise") { ask(turn.question) }
+        Button("重新问", systemImage: "arrow.clockwise") { askAgain(turn) }
             .disabled(isAsking)
         if let answer = turn.record?.answer {
             Button("拷贝回答", systemImage: "doc.on.doc") {
@@ -258,7 +306,7 @@ struct AskView: View {
         }
         Button("删除", systemImage: "trash", role: .destructive) {
             turns.removeAll { $0.id == turn.id }
-            AskHistory.save(turns.compactMap(\.record))
+            AskHistory.update(conversationID, records: turns.compactMap(\.record))
         }
     }
 
@@ -274,6 +322,20 @@ struct AskView: View {
     }
 }
 
+private struct QuestionBubble: View {
+    let text: String
+
+    var body: some View {
+        HStack {
+            Spacer(minLength: 40)
+            Text(text)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 18))
+        }
+    }
+}
+
 private struct TurnView: View {
     let question: String
     let record: AskRecord?
@@ -284,13 +346,7 @@ private struct TurnView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Spacer(minLength: 40)
-                Text(question)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 18))
-            }
+            QuestionBubble(text: question)
             if let record {
                 AnswerCard(answer: record.answer, elapsed: record.seconds.map { .milliseconds(Int($0 * 1000)) },
                            currency: record.currency, open: open)

@@ -57,6 +57,7 @@ struct OutstandingListView: View {
     @State private var editing: Outstanding?
     @State private var partlySettling: Outstanding?
     @State private var justSettled: JustSettled?
+    @State private var confirmDelete: Outstanding?
 
     /// The entry a tap just recorded, so it can be undone.
     private struct JustSettled: Equatable {
@@ -125,6 +126,12 @@ struct OutstandingListView: View {
         }
         .animation(.default, value: justSettled)
         .deletionUndoBar()
+        .deletionAlert(confirmDelete?.direction == .payable ? String(localized: "删除这笔应付？") : String(localized: "删除这笔应收？"),
+                       item: $confirmDelete) { item in
+            Button("删除", role: .destructive) { delete(item) }
+        } message: { item in
+            Text("「\(item.displayTitle)」\n已记的账会保留。")
+        }
         .sheet(item: $creating) { direction in
             NavigationStack { OutstandingEditorView(item: nil, direction: direction) }
         }
@@ -169,10 +176,10 @@ struct OutstandingListView: View {
                 partlySettling = item
             }
             Button("修改", systemImage: "pencil") { editing = item }
-            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
+            Button("删除", systemImage: "trash", role: .destructive) { confirmDelete = item }
         }
-        .swipeActions {
-            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
+        .swipeActions(allowsFullSwipe: false) {
+            SwipeDeleteButton { confirmDelete = item }
             Button("部分", systemImage: "circle.lefthalf.filled") { partlySettling = item }
                 .tint(.orange)
         }
@@ -196,8 +203,8 @@ struct OutstandingListView: View {
         }
         .contentShape(.rect)
         .onTapGesture { editing = item }
-        .swipeActions {
-            Button("删除", systemImage: "trash", role: .destructive) { delete(item) }
+        .swipeActions(allowsFullSwipe: false) {
+            SwipeDeleteButton { confirmDelete = item }
         }
     }
 
@@ -236,8 +243,8 @@ struct OutstandingListView: View {
         queried.filter { !PendingDeletion.shared.hides($0) }
     }
 
-    /// With 撤销 at the bottom for a few seconds. Income or spending already recorded from it stays
-    /// in the ledger.
+    /// Once confirmed, with 撤销 at the bottom for a few seconds. Income or spending already recorded
+    /// from it stays in the ledger.
     private func delete(_ item: Outstanding) {
         PendingDeletion.shared.delete([item], message: String(localized: "已删除「\(item.displayTitle)」"), in: context)
     }

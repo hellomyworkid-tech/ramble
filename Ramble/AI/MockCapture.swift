@@ -21,15 +21,17 @@ nonisolated enum MockCapture {
     }
 
     /// The renovation scenario: a note, a reminder tied to one of its sentences, and an expense.
-    private static func renovation(now: Date) -> ParsedCapture {
-        let sentence = "师傅说水泥要养护 7 天，下周三可以铺砖。"
+    private static func renovation(now: Date, english: Bool) -> ParsedCapture {
+        let sentence = english ? "The cement needs 7 days to cure, so tiling can start next Wednesday." : "师傅说水泥要养护 7 天，下周三可以铺砖。"
         var note = ParsedItem()
-        note.type = "note"; note.title = "装修记录"; note.note = sentence + "\n今天买瓷砖花了 3,200 元。"
+        note.type = "note"; note.title = String(localized: "装修记录")
+        note.note = sentence + (english ? "\nSpent 3,200 on tiles today." : "\n今天买瓷砖花了 3,200 元。")
         var task = ParsedItem()
-        task.type = "task"; task.title = "铺砖"; task.date = day(nextWednesday(after: now)); task.quote = sentence
+        task.type = "task"; task.title = english ? "Lay the tiles" : "铺砖"; task.date = day(nextWednesday(after: now)); task.quote = sentence
         var tiles = ParsedItem()
-        tiles.type = "expense"; tiles.title = "瓷砖"; tiles.amount = "3200"; tiles.category = "居住"; tiles.date = day(now)
-        return ParsedCapture(items: [note, task, tiles], fillerPhrases: ["那边", "然后"], followUpQuestion: "")
+        tiles.type = "expense"; tiles.title = english ? "Tiles" : "瓷砖"; tiles.amount = "3200"
+        tiles.category = String(localized: "居住"); tiles.date = day(now)
+        return ParsedCapture(items: [note, task, tiles], fillerPhrases: english ? [] : ["那边", "然后"], followUpQuestion: "")
     }
 
     /// Reading a file: a checkup report, a warranty card, or anything else.
@@ -87,7 +89,8 @@ nonisolated enum MockCapture {
     }
 
     static func capture(for input: String, now: Date) -> ParsedCapture {
-        if input.contains("装修") { return renovation(now: now) }
+        if input.contains("装修") { return renovation(now: now, english: false) }
+        if input.contains("Renovation") { return renovation(now: now, english: true) }
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

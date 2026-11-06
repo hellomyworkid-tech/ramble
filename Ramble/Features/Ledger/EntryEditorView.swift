@@ -114,7 +114,8 @@ struct EntryEditorView: View {
                     .disabled(!canSave)
             }
         }
-        .confirmationDialog("删除这笔记录？", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("删除这笔记录？", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 if let entry { context.delete(entry) }
                 finish()

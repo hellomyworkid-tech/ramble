@@ -39,6 +39,17 @@
                ReferencedContainer = "container:Ramble.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C10000000000000000000010"
+               BuildableName = "RambleUITests.xctest"
+               BlueprintName = "RambleUITests"
+               ReferencedContainer = "container:Ramble.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

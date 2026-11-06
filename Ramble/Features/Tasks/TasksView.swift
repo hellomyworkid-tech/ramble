@@ -30,6 +30,7 @@ struct TasksView: View {
     @State private var query = ""
     @State private var editingTask: TaskItem?
     @State private var isCreating = false
+    @State private var confirmDelete: TaskItem?
     /// The to-do a reminder led to, tinted for a moment.
     @State private var spotlit: PersistentIdentifier?
 
@@ -55,10 +56,8 @@ struct TasksView: View {
                                 TaskRow(task: task)
                                     .contentShape(.rect)
                                     .onTapGesture { editingTask = task }
-                                    .swipeActions {
-                                        Button("删除", systemImage: "trash", role: .destructive) {
-                                            PendingDeletion.shared.delete([task], message: String(localized: "已删除「\(task.title)」"), in: context)
-                                        }
+                                    .swipeActions(allowsFullSwipe: false) {
+                                        SwipeDeleteButton { confirmDelete = task }
                                     }
                                     .id(task.persistentModelID)
                                     .spotlit(spotlit == task.persistentModelID, ModuleColor.tasks)
@@ -78,6 +77,13 @@ struct TasksView: View {
                 .animation(.default, value: filter)
                 .searchable(text: $query, prompt: Text("搜索待办"))
                 .deletionUndoBar()
+                .deletionAlert(String(localized: "删除这条待办？"), item: $confirmDelete) { task in
+                    Button("删除", role: .destructive) {
+                        PendingDeletion.shared.delete([task], message: String(localized: "已删除「\(task.title)」"), in: context)
+                    }
+                } message: { task in
+                    Text("「\(task.title)」")
+                }
                 .navigationTitle("待办")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

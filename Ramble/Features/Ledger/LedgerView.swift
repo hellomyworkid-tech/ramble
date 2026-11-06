@@ -71,6 +71,7 @@ private struct MonthLedgerList: View {
     @Query private var budgets: [Budget]
     @AppStorage(LedgerGrouping.storageKey) private var grouping = LedgerGrouping.date
     @State private var editingEntry: LedgerEntry?
+    @State private var confirmDelete: LedgerEntry?
 
     init(month: Binding<Date>, baseCurrency: String) {
         _month = month
@@ -117,7 +118,7 @@ private struct MonthLedgerList: View {
 
             switch grouping {
             case .date:
-                EntriesByDay(entries: entries, baseCurrency: baseCurrency) { editingEntry = $0 }
+                EntriesByDay(entries: entries, baseCurrency: baseCurrency, confirmDelete: $confirmDelete) { editingEntry = $0 }
             case .category:
                 categorySection(.expense)
                 categorySection(.income)
@@ -125,6 +126,7 @@ private struct MonthLedgerList: View {
             }
         }
         .deletionUndoBar()
+        .entryDeletionAlert($confirmDelete)
         .sheet(item: $editingEntry) { entry in
             NavigationStack { EntryEditorView(entry: entry) }
         }
@@ -194,6 +196,7 @@ private struct LedgerSearchResults: View {
 
     @Query(sort: \LedgerEntry.date, order: .reverse) private var entries: [LedgerEntry]
     @State private var editingEntry: LedgerEntry?
+    @State private var confirmDelete: LedgerEntry?
 
     var body: some View {
         let found = entries.filter { !PendingDeletion.shared.hides($0) && $0.matches(query) }
@@ -217,12 +220,13 @@ private struct LedgerSearchResults: View {
                     .font(.subheadline)
                 }
             }
-            EntriesByDay(entries: found, baseCurrency: baseCurrency) { editingEntry = $0 }
+            EntriesByDay(entries: found, baseCurrency: baseCurrency, confirmDelete: $confirmDelete) { editingEntry = $0 }
         }
         .overlay {
             if found.isEmpty { ContentUnavailableView.search(text: query) }
         }
         .deletionUndoBar()
+        .entryDeletionAlert($confirmDelete)
         .sheet(item: $editingEntry) { entry in
             NavigationStack { EntryEditorView(entry: entry) }
         }

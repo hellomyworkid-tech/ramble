@@ -131,7 +131,8 @@ struct BillEditorView: View {
                     .disabled(name.trimmed.isEmpty || Decimal(userInput: amountText) == nil)
             }
         }
-        .confirmationDialog("删除这个账单？已记的账会保留。", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("删除这个账单？已记的账会保留。", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 if let bill { context.delete(bill) }
                 finish()

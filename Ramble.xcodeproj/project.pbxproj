@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B10000000000000000000030 /* RambleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* RambleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D10000000000000000000030 /* RambleShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D10000000000000000000001 /* RambleShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A10000000000000000000071 /* MLXAudioSTT in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000070 /* MLXAudioSTT */; };
 		A10000000000000000000090 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000080 /* MLXLLM */; };
 		A10000000000000000000091 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000081 /* MLXLMCommon */; };
@@ -32,6 +33,20 @@
 			remoteGlobalIDString = A10000000000000000000010;
 			remoteInfo = Ramble;
 		};
+		D10000000000000000000041 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D10000000000000000000010;
+			remoteInfo = RambleShare;
+		};
+		C10000000000000000000031 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000010;
+			remoteInfo = Ramble;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -42,6 +57,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				B10000000000000000000030 /* RambleWidgets.appex in Embed Foundation Extensions */,
+				D10000000000000000000030 /* RambleShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -50,8 +66,10 @@
 
 /* Begin PBXFileReference section */
 		B10000000000000000000001 /* RambleWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RambleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D10000000000000000000001 /* RambleShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RambleShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000004 /* Ramble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ramble.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000005 /* RambleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RambleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000000000000000000001 /* RambleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RambleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -73,6 +91,21 @@
 		A10000000000000000000007 /* RambleTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = RambleTests;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000002 /* RambleShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RambleShare;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000003 /* ShareInbox */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShareInbox;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000002 /* RambleUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RambleUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -106,6 +139,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -114,8 +161,11 @@
 			children = (
 				A10000000000000000000006 /* Ramble */,
 				A10000000000000000000007 /* RambleTests */,
+				C10000000000000000000002 /* RambleUITests */,
 				B10000000000000000000002 /* RambleWidgets */,
 				B10000000000000000000003 /* RambleShared */,
+				D10000000000000000000002 /* RambleShare */,
+				D10000000000000000000003 /* ShareInbox */,
 				A10000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -125,7 +175,9 @@
 			children = (
 				A10000000000000000000004 /* Ramble.app */,
 				A10000000000000000000005 /* RambleTests.xctest */,
+				C10000000000000000000001 /* RambleUITests.xctest */,
 				B10000000000000000000001 /* RambleWidgets.appex */,
+				D10000000000000000000001 /* RambleShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -146,10 +198,12 @@
 			);
 			dependencies = (
 				B10000000000000000000040 /* PBXTargetDependency */,
+				D10000000000000000000040 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000006 /* Ramble */,
 				B10000000000000000000003 /* RambleShared */,
+				D10000000000000000000003 /* ShareInbox */,
 			);
 			name = Ramble;
 			packageProductDependencies = (
@@ -187,6 +241,52 @@
 			productName = RambleTests;
 			productReference = A10000000000000000000005 /* RambleTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C10000000000000000000010 /* RambleUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000000000000000000040 /* Build configuration list for PBXNativeTarget "RambleUITests" */;
+			buildPhases = (
+				C10000000000000000000020 /* Sources */,
+				C10000000000000000000021 /* Frameworks */,
+				C10000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C10000000000000000000030 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C10000000000000000000002 /* RambleUITests */,
+			);
+			name = RambleUITests;
+			packageProductDependencies = (
+			);
+			productName = RambleUITests;
+			productReference = C10000000000000000000001 /* RambleUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		D10000000000000000000010 /* RambleShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D10000000000000000000050 /* Build configuration list for PBXNativeTarget "RambleShare" */;
+			buildPhases = (
+				D10000000000000000000020 /* Sources */,
+				D10000000000000000000021 /* Frameworks */,
+				D10000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D10000000000000000000002 /* RambleShare */,
+				D10000000000000000000003 /* ShareInbox */,
+			);
+			name = RambleShare;
+			packageProductDependencies = (
+			);
+			productName = RambleShare;
+			productReference = D10000000000000000000001 /* RambleShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		B10000000000000000000010 /* RambleWidgets */ = {
 			isa = PBXNativeTarget;
@@ -228,7 +328,14 @@
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = A10000000000000000000010;
 					};
+					C10000000000000000000010 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = A10000000000000000000010;
+					};
 					B10000000000000000000010 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					D10000000000000000000010 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -256,7 +363,9 @@
 			targets = (
 				A10000000000000000000010 /* Ramble */,
 				A10000000000000000000011 /* RambleTests */,
+				C10000000000000000000010 /* RambleUITests */,
 				B10000000000000000000010 /* RambleWidgets */,
+				D10000000000000000000010 /* RambleShare */,
 			);
 		};
 /* End PBXProject section */
@@ -270,6 +379,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000025 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000000000000000000022 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000022 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -300,6 +423,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B10000000000000000000020 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -319,6 +456,16 @@
 			isa = PBXTargetDependency;
 			target = B10000000000000000000010 /* RambleWidgets */;
 			targetProxy = B10000000000000000000041 /* PBXContainerItemProxy */;
+		};
+		D10000000000000000000040 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D10000000000000000000010 /* RambleShare */;
+			targetProxy = D10000000000000000000041 /* PBXContainerItemProxy */;
+		};
+		C10000000000000000000030 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000010 /* Ramble */;
+			targetProxy = C10000000000000000000031 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -562,6 +709,96 @@
 			};
 			name = Release;
 		};
+		C10000000000000000000041 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = 83KV7ZY77L;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zengji.suikouji.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Ramble;
+			};
+			name = Debug;
+		};
+		C10000000000000000000042 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = 83KV7ZY77L;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zengji.suikouji.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Ramble;
+			};
+			name = Release;
+		};
+		D10000000000000000000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/RambleShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = 83KV7ZY77L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Share-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "随口记";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zengji.suikouji.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		D10000000000000000000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/RambleShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = 83KV7ZY77L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Share-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "随口记";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zengji.suikouji.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		B10000000000000000000051 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -646,6 +883,24 @@
 			buildConfigurations = (
 				A10000000000000000000047 /* Debug */,
 				A10000000000000000000048 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000000000000000000040 /* Build configuration list for PBXNativeTarget "RambleUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C10000000000000000000041 /* Debug */,
+				C10000000000000000000042 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D10000000000000000000050 /* Build configuration list for PBXNativeTarget "RambleShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D10000000000000000000051 /* Debug */,
+				D10000000000000000000052 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -7,6 +7,7 @@ struct CategoriesView: View {
     @State private var kind: CategoryKind = .expense
     @State private var editingCategory: LedgerCategory?
     @State private var isCreating = false
+    @State private var confirmDelete: LedgerCategory?
 
     var body: some View {
         List {
@@ -31,14 +32,22 @@ struct CategoriesView: View {
                     }
                     .contentShape(.rect)
                     .onTapGesture { editingCategory = category }
+                    .swipeActions(allowsFullSwipe: false) {
+                        SwipeDeleteButton { confirmDelete = category }
+                    }
                 }
                 .onMove(perform: move)
-                .onDelete(perform: delete)
             } footer: {
                 Text("删除分类后，已有的记账会变成「未分类」。")
             }
         }
         .navigationTitle(Text(ScreenName.categories))
+        // No 撤销 here: it goes at once, and every entry in it loses its category.
+        .deletionAlert(confirmDelete.map { String(localized: "删除「\($0.name)」？") } ?? "", item: $confirmDelete) { category in
+            Button("删除", role: .destructive) { context.delete(category) }
+        } message: { _ in
+            Text("删除分类后，已有的记账会变成「未分类」。")
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { EditButton() }
             ToolbarItem(placement: .topBarTrailing) {
@@ -62,13 +71,6 @@ struct CategoriesView: View {
         ordered.move(fromOffsets: source, toOffset: destination)
         for (index, category) in ordered.enumerated() {
             category.sortOrder = index
-        }
-    }
-
-    private func delete(at offsets: IndexSet) {
-        let list = visible
-        for index in offsets {
-            context.delete(list[index])
         }
     }
 }

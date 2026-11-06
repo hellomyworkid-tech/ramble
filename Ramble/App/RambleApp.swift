@@ -34,7 +34,40 @@ struct RambleApp: App {
            let tab = AppTab(rawValue: arguments[index + 1]) {
             AppRouter.shared.tab = tab
         }
+        // `-testLongNote`: enough entries in 装修记录 for its page to scroll.
+        if arguments.contains("-testLongNote"),
+           let note = ((try? container.mainContext.fetch(FetchDescriptor<Note>())) ?? []).first(where: { $0.title == "装修记录" }) {
+            for number in 1...30 {
+                note.append("第 \(number) 条记录\n写得长一点，这样每一条都占一些地方。", date: .now.addingTimeInterval(Double(number - 40) * 3600), in: container.mainContext)
+            }
+            try? container.mainContext.save()
+        }
         if arguments.contains("-openAsk") { AppRouter.shared.ask(nil) }
+        // A throwaway run: nothing shared earlier opens by itself in the middle of a test.
+        if arguments.contains("-inMemoryStore") { ShareInbox.shared?.removeAll() }
+        // `-testShare 这段话`: as if it had just come from the share sheet. `-testShareFile` does the same with a file.
+        if let inbox = ShareInbox.shared, let draft = try? inbox.makeDraft() {
+            if let index = arguments.firstIndex(of: "-testShare"), index + 1 < arguments.count {
+                try? inbox.commit(draft, text: arguments[index + 1])
+            } else if let index = arguments.firstIndex(of: "-testShareFile"), index + 1 < arguments.count {
+                try? draft.addFile(Data(arguments[index + 1].utf8), named: "shared.txt")
+                try? inbox.commit(draft, text: "")
+            }
+        }
+        // Screenshots: a link opened from outside would stop at the system's 「在随口记中打开？」.
+        if let index = arguments.firstIndex(of: "-openLink"), index + 1 < arguments.count,
+           let link = URL(string: arguments[index + 1]) {
+            AppRouter.shared.open(link)
+        }
+        // `-testReminder 交季度报告`: that to-do's reminder, a few seconds from now.
+        if let index = arguments.firstIndex(of: "-testReminder"), index + 1 < arguments.count {
+            let title = arguments[index + 1]
+            let tasks = (try? container.mainContext.fetch(FetchDescriptor<TaskItem>())) ?? []
+            if let task = tasks.first(where: { $0.title == title }) {
+                let id = ModelRef.encode(task.persistentModelID)
+                Task { await NotificationScheduler.shared.fireTestReminder(title: title, id: id) }
+            }
+        }
         if let index = arguments.firstIndex(of: "-openNote"), index + 1 < arguments.count {
             let title = arguments[index + 1]
             let notes = (try? container.mainContext.fetch(FetchDescriptor<Note>())) ?? []
@@ -50,6 +83,7 @@ struct RambleApp: App {
                 SyncDeduper.run(in: context)
                 NotificationScheduler.shared.setNeedsReschedule()
                 WidgetBridge.setNeedsRefresh()
+                SpotlightIndex.shared.setNeedsRefresh()
             }
         }
         // Reconnect to model downloads that kept running while the app was closed.

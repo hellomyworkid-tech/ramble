@@ -1,0 +1,108 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "关闭" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "已存到随口记" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved to Ramble"
+          }
+        }
+      }
+    },
+    "已收到分享" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared to Ramble"
+          }
+        }
+      }
+    },
+    "打开随口记就会接着整理。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Ramble and it'll tidy this up."
+          }
+        }
+      }
+    },
+    "有 %lld 个文件超过 50MB，没有存。" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file over 50 MB wasn't saved."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files over 50 MB weren't saved."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "正在存到随口记…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving to Ramble…"
+          }
+        }
+      }
+    },
+    "没有存成功，再试一次。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save it. Please try again."
+          }
+        }
+      }
+    },
+    "没有能存的内容。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There was nothing to save."
+          }
+        }
+      }
+    },
+    "点这里接着整理" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to tidy it up."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

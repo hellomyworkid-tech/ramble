@@ -356,7 +356,7 @@ struct AIQueryPlanTests {
     }
 }
 
-/// 问一问 keeps what was asked, so it's still there next time.
+/// 问一问 keeps what was asked, conversation by conversation.
 struct AskHistoryTests {
     private func temporaryURL() -> URL {
         FileManager.default.temporaryDirectory.appending(path: "ask-history-\(UUID().uuidString).json")
@@ -372,30 +372,93 @@ struct AskHistoryTests {
         return answer
     }
 
+    private func record(_ question: String, at date: Date = .now) -> AskRecord {
+        AskRecord(date: date, question: question, answer: answer(), currency: "CNY")
+    }
+
     @Test func answersComeBackAsTheyWere() {
         let url = temporaryURL()
         defer { AskHistory.clear(at: url) }
         let record = AskRecord(date: .now, question: "这个月吃饭花了多少", answer: answer(), currency: "CNY", seconds: 2.5)
-        AskHistory.append(record, to: url)
+        AskHistory.add(record, to: UUID(), at: url)
         let loaded = AskHistory.load(from: url)
-        #expect(loaded == [record])
-        #expect(loaded.first?.answer.plan?.subject == .expense)
+        #expect(loaded.first?.records == [record])
+        #expect(loaded.first?.title == "这个月吃饭花了多少")
+        #expect(loaded.first?.records.first?.answer.plan?.subject == .expense)
     }
 
-    @Test func keepsTheNewestHundred() {
+    @Test func questionsStayInTheirConversationAndTheLatestComesFirst() {
         let url = temporaryURL()
         defer { AskHistory.clear(at: url) }
-        let records = (0..<130).map { AskRecord(date: .now, question: "问题 \($0)", answer: answer(), currency: "CNY") }
-        AskHistory.save(records, to: url)
+        let first = UUID(), second = UUID()
+        AskHistory.add(record("一"), to: first, at: url)
+        AskHistory.add(record("二"), to: second, at: url)
+        #expect(AskHistory.load(from: url).map(\.id) == [second, first])
+        AskHistory.add(record("三"), to: first, at: url)
         let loaded = AskHistory.load(from: url)
-        #expect(loaded.count == AskHistory.limit)
-        #expect(loaded.first?.question == "问题 30")
-        #expect(loaded.last?.question == "问题 129")
+        #expect(loaded.map(\.id) == [first, second])
+        #expect(loaded[0].records.map(\.question) == ["一", "三"])
+    }
+
+    @Test func deletingAQuestionKeepsThePlaceAndTheLastOneTakesTheConversation() {
+        let url = temporaryURL()
+        defer { AskHistory.clear(at: url) }
+        let first = UUID(), second = UUID()
+        AskHistory.add(record("一"), to: first, at: url)
+        AskHistory.add(record("二"), to: first, at: url)
+        AskHistory.add(record("三"), to: second, at: url)
+        let kept = AskHistory.load(from: url)[1].records.suffix(1)
+        AskHistory.update(first, records: Array(kept), at: url)
+        #expect(AskHistory.load(from: url).map(\.id) == [second, first])
+        #expect(AskHistory.load(from: url)[1].records.map(\.question) == ["二"])
+        AskHistory.update(first, records: [], at: url)
+        #expect(AskHistory.load(from: url).map(\.id) == [second])
+    }
+
+    @Test func keepsTheNewestQuestions() {
+        let url = temporaryURL()
+        defer { AskHistory.clear(at: url) }
+        let questions = (0..<(AskHistory.limit + 30)).map { record("问题 \($0)") }
+        // Newest conversation first: the latest 100 questions, then the rest, then one with no room left.
+        let conversations = [AskConversation(records: Array(questions.suffix(100))),
+                             AskConversation(records: Array(questions.prefix(AskHistory.limit - 70))),
+                             AskConversation(records: [record("更早")])]
+        AskHistory.save(conversations, to: url)
+        let loaded = AskHistory.load(from: url)
+        #expect(loaded.count == 2)
+        #expect(loaded.flatMap(\.records).count == AskHistory.limit)
+        #expect(loaded[1].records.first?.question == "问题 30")
+        #expect(loaded[1].records.last?.question == "问题 \(AskHistory.limit - 71)")
+    }
+
+    @Test func onlyARecentConversationIsCarriedOn() {
+        let url = temporaryURL()
+        defer { AskHistory.clear(at: url) }
+        let id = UUID()
+        AskHistory.add(record("一", at: now), to: id, at: url)
+        #expect(AskHistory.resumable(now: now.addingTimeInterval(29 * 60), from: url)?.id == id)
+        #expect(AskHistory.resumable(now: now.addingTimeInterval(31 * 60), from: url) == nil)
+    }
+
+    @Test func theOldListBecomesConversations() throws {
+        let url = temporaryURL(), legacy = temporaryURL()
+        defer { AskHistory.clear(at: url); AskHistory.clear(at: legacy) }
+        let old = [record("一", at: now), record("二", at: now.addingTimeInterval(10 * 60)),
+                   record("三", at: now.addingTimeInterval(3 * 3600)), record("四", at: now.addingTimeInterval(86400))]
+        try JSONEncoder().encode(old).write(to: legacy)
+
+        let loaded = AskHistory.load(from: url, legacy: legacy)
+        #expect(loaded.map { $0.records.map(\.question) } == [["四"], ["三"], ["一", "二"]])
+        #expect(!FileManager.default.fileExists(atPath: legacy.path()))
+        #expect(AskHistory.load(from: url, legacy: legacy) == loaded)
+        // Cleared stays cleared.
+        AskHistory.clear(at: url)
+        #expect(AskHistory.load(from: url, legacy: legacy).isEmpty)
     }
 
     @Test func clearingRemovesEverything() {
         let url = temporaryURL()
-        AskHistory.append(AskRecord(date: .now, question: "q", answer: answer(), currency: "CNY"), to: url)
+        AskHistory.add(record("q"), to: UUID(), at: url)
         AskHistory.clear(at: url)
         #expect(AskHistory.load(from: url).isEmpty)
     }
@@ -405,5 +468,206 @@ struct AskHistoryTests {
         defer { AskHistory.clear(at: url) }
         try Data("not json".utf8).write(to: url)
         #expect(AskHistory.load(from: url).isEmpty)
+    }
+}
+
+/// When to ask for a rating.
+struct ReviewPromptTests {
+    private func defaults() throws -> UserDefaults {
+        let name = "review-tests-\(UUID().uuidString)"
+        return try #require(UserDefaults(suiteName: name))
+    }
+
+    @Test func asksAfterAFewCapturesOncePerVersion() throws {
+        let defaults = try defaults()
+        for _ in 1..<ReviewPrompt.capturesNeeded {
+            #expect(!ReviewPrompt.captureSaved(version: "1.2", defaults: defaults))
+        }
+        #expect(ReviewPrompt.captureSaved(version: "1.2", defaults: defaults))
+        // Not again in this version, however many more.
+        for _ in 0..<(ReviewPrompt.capturesNeeded * 2) {
+            #expect(!ReviewPrompt.captureSaved(version: "1.2", defaults: defaults))
+        }
+        // The next version has earned it already.
+        #expect(ReviewPrompt.captureSaved(version: "1.3", defaults: defaults))
+    }
+
+    @Test func aNewVersionStartsCountingAfterAsking() throws {
+        let defaults = try defaults()
+        for _ in 0..<ReviewPrompt.capturesNeeded { _ = ReviewPrompt.captureSaved(version: "1.2", defaults: defaults) }
+        #expect(!ReviewPrompt.captureSaved(version: "1.3", defaults: defaults))
+    }
+}
+
+/// A question in a conversation says only what changes.
+struct FollowUpTests {
+    private let categories = [
+        CategoryInfo(name: "餐饮", isIncome: false, seedKey: "food"),
+        CategoryInfo(name: "交通", isIncome: false, seedKey: "transport"),
+        CategoryInfo(name: "购物", isIncome: false, seedKey: "shopping"),
+        CategoryInfo(name: "工资", isIncome: true, seedKey: "salary"),
+    ]
+
+    private func parse(_ question: String, after earlier: String) -> QuestionParser.Result {
+        let previous = QuestionParser.parse(earlier, categories: categories, now: now).plan
+        return QuestionParser.parse(question, categories: categories, now: now, after: previous)
+    }
+
+    @Test(arguments: ["上个月", "那上个月呢", "上一个月呢", "上个月的", "上月呢"])
+    func theTimeChanges(_ question: String) throws {
+        let result = parse(question, after: "餐饮花了多少钱")
+        let plan = try #require(result.plan)
+        #expect(result.confident)
+        #expect(plan.subject == .expense && plan.measure == .total && plan.categories == ["餐饮"])
+        #expect(plan.period?.label == "上个月")
+    }
+
+    @Test func oneAfterAnother() throws {
+        let previous = try #require(parse("再上个月呢", after: "上个月吃饭花了多少").plan)
+        #expect(previous.categories == ["餐饮"] && previous.period?.start == day("2026-08-01"))
+        let next = try #require(QuestionParser.parse("交通呢", categories: categories, now: now, after: previous).plan)
+        #expect(next.categories == ["交通"] && next.period?.start == day("2026-08-01"))
+    }
+
+    /// 「上个月有哪些收入」 then 「餐饮花了多少钱」 was answered for this month.
+    @Test func anotherQuestionAboutTheSameTime() throws {
+        let plan = try #require(parse("餐饮花了多少钱", after: "上个月有哪些收入").plan)
+        #expect(plan.subject == .expense && plan.measure == .total && plan.categories == ["餐饮"])
+        #expect(plan.period?.label == "上个月")
+    }
+
+    @Test func somethingElseAskedTheSameWay() throws {
+        let transport = try #require(parse("那交通呢", after: "上个月吃饭最贵的一笔").plan)
+        #expect(transport.categories == ["交通"] && transport.measure == .biggest && transport.period?.label == "上个月")
+        let merchant = try #require(parse("打车呢", after: "上个月吃饭花了多少").plan)
+        #expect(merchant.keywords == ["打车"] && merchant.categories == ["交通"] && merchant.period?.label == "上个月")
+        let income = try #require(parse("工资呢", after: "上个月吃饭花了多少").plan)
+        #expect(income.subject == .income && income.categories == ["工资"] && income.period?.label == "上个月")
+        // 「花在哪」 is about many categories; one category is just its total.
+        #expect(parse("交通呢", after: "上个月钱主要花在哪").plan?.measure == .total)
+    }
+
+    @Test func anotherWayToLookAtIt() throws {
+        for (question, measure) in [("最贵的一笔呢", QueryPlan.Measure.biggest), ("平均每天呢", .average), ("明细", .list), ("有几笔", .count)] {
+            let result = parse(question, after: "上个月吃饭花了多少")
+            let plan = try #require(result.plan, "\(question)")
+            #expect(result.confident, "\(question)")
+            #expect(plan.measure == measure && plan.categories == ["餐饮"] && plan.period?.label == "上个月", "\(question)")
+        }
+        #expect(parse("平均每天呢", after: "上个月收入多少").plan?.subject == .income)
+    }
+
+    @Test func comparingKeepsWhatWasAsked() throws {
+        let plan = try #require(parse("和上个月比呢", after: "这个月吃饭花了多少").plan)
+        #expect(plan.measure == .compare && plan.categories == ["餐饮"] && plan.period?.label == "本月")
+        // No time said before means this month, and it stays that way.
+        let implied = try #require(parse("比上个月多吗", after: "吃饭花了多少").plan)
+        #expect(implied.measure == .compare && implied.period == nil)
+        // Both said, on their own: the later one is compared with the earlier.
+        let both = try #require(QuestionParser.parse("这个月比上个月花得多吗", categories: categories, now: now).plan)
+        #expect(both.measure == .compare && both.period?.label == "本月")
+    }
+
+    @Test func aDifferentTopicLeavesTheTimeUnlessTheySayOtherwise() throws {
+        let income = try #require(parse("收入呢", after: "上个月吃饭花了多少").plan)
+        #expect(income.subject == .income && income.categories.isEmpty && income.period?.label == "上个月")
+        let marked = try #require(parse("待办呢", after: "这周花了多少").plan)
+        #expect(marked.subject == .tasks && marked.period?.label == "本周")
+        let new = try #require(parse("有哪些待办", after: "上个月花了多少").plan)
+        #expect(new.subject == .tasks && new.period == nil)
+        let done = try #require(parse("这周呢", after: "上周完成了几件事").plan)
+        #expect(done.subject == .tasks && done.taskState == .done && done.period?.label == "本周")
+    }
+
+    @Test func aQuestionThatStandsAloneDoes() throws {
+        let tasks = try #require(parse("这周还有哪些待办", after: "上个月吃饭花了多少").plan)
+        #expect(tasks.subject == .tasks && tasks.measure == .list && tasks.period?.label == "本周" && tasks.categories.isEmpty)
+        // Nothing to go on: AI reads it, without being told about the last one.
+        let new = parse("血脂多少", after: "上个月吃饭花了多少")
+        #expect(!new.confident && !new.carriesOn && new.plan?.subject == .notes && new.plan?.period == nil)
+        #expect(parse("装修那边下一步要做什么", after: "上个月吃饭花了多少").carriesOn == false)
+        // Saying nothing asks nothing.
+        #expect(parse("呢", after: "上个月吃饭花了多少").plan == nil)
+    }
+
+    @Test func wordsTheRulesDontKnowGoToAI() throws {
+        let result = parse("那胖东来呢", after: "上个月吃饭花了多少")
+        let plan = try #require(result.plan)
+        #expect(!result.confident && result.carriesOn)
+        #expect(plan.subject == .expense && plan.keywords == ["胖东来"] && plan.categories.isEmpty && plan.period?.label == "上个月")
+        // AI is the only reader of other languages, so it always hears what came before.
+        #expect(parse("and last week?", after: "上个月吃饭花了多少").carriesOn)
+        // After a question about notes, a time alone still needs AI to hear what was asked.
+        #expect(parse("上个月", after: "笔记里记过什么").carriesOn)
+    }
+
+    @Test func aTimeOnItsOwnWithNothingBeforeIsAboutMoney() throws {
+        let past = QuestionParser.parse("上个月", categories: categories, now: now)
+        #expect(past.confident && past.plan?.subject == .expense && past.plan?.period?.label == "上个月")
+        // Still to come: to-dos or bills as likely as money. AI decides, but the time is certain.
+        let coming = QuestionParser.parse("下个月", categories: categories, now: now)
+        #expect(!coming.confident && coming.plan == nil && coming.period?.label == "下个月")
+    }
+
+    @Test func aiHearsWhatTheLastQuestionLookedUp() throws {
+        let previous = try #require(parse("9月吃饭花了多少", after: "").plan)
+        let instructions = AskEngine.planInstructions(categories: categories, now: now, after: previous)
+        #expect(instructions.contains(#""from":"2026-09-01""#) && instructions.contains(#""to":"2026-09-30""#))
+        #expect(instructions.contains(#""categories":["餐饮"]"#) && instructions.contains(#""period":"custom""#))
+        #expect(!AskEngine.planInstructions(categories: categories, now: now).contains("The question before"))
+    }
+}
+
+/// Follow-ups all the way to the answer, without AI.
+@MainActor
+struct AskFollowUpTests {
+    private let container = AppSchema.makeContainer(inMemory: true)
+
+    private func library() throws -> ModelContext {
+        let context = container.mainContext
+        let food = LedgerCategory(name: "餐饮", kind: .expense, symbol: "fork.knife", colorHex: "#D9480F", seedKey: "food")
+        let transport = LedgerCategory(name: "交通", kind: .expense, symbol: "tram", colorHex: "#0A66D8", seedKey: "transport")
+        [food, transport].forEach(context.insert)
+        func add(_ amount: Decimal, _ category: LedgerCategory, _ date: String) {
+            let entry = LedgerEntry(kind: .expense, amount: amount, currencyCode: "CNY", date: DraftParsing.date(date, time: "12:00")!)
+            context.insert(entry)
+            entry.category = category
+        }
+        add(35, food, "2026-10-13")
+        add(300, food, "2026-09-20")
+        add(22, transport, "2026-09-10")
+        add(4, transport, "2026-10-09")
+        try context.save()
+        return context
+    }
+
+    private func answered(_ question: String, after previous: AskRecord? = nil, on date: Date = now, context: ModelContext) async throws -> AskRecord {
+        let answer = try await AskEngine.ask(question, after: previous, context: context, now: date)
+        return AskRecord(date: date, question: question, answer: answer, currency: "CNY")
+    }
+
+    @Test func theConversationInTheScreenshot() async throws {
+        let context = try library()
+        let food = try await answered("餐饮花了多少钱", context: context)
+        #expect(food.answer.headline == "本月「餐饮」支出 ¥35.00，共 1 笔。")
+        let lastMonth = try await answered("上个月", after: food, context: context)
+        #expect(lastMonth.answer.headline == "上个月「餐饮」支出 ¥300.00，共 1 笔。")
+        #expect(lastMonth.answer.source == .rules)
+        let transport = try await answered("交通呢", after: lastMonth, context: context)
+        #expect(transport.answer.headline == "上个月「交通」支出 ¥22.00，共 1 笔。")
+    }
+
+    /// A word with no category of its own used to be given everything spent in the period.
+    @Test func aWordNothingMatchesFindsNothing() throws {
+        let context = try library()
+        let plan = QueryPlan(subject: .expense, period: PeriodResolver.preset("lastMonth", now: now), keywords: ["胖东来"])
+        #expect(QueryRunner.run(plan, context: context, now: now).headline == "上个月没有「胖东来」支出记录。")
+    }
+
+    @Test func theTimeDoesNotCarryOverToAnotherDay() async throws {
+        let context = try library()
+        let lastMonth = try await answered("上个月吃饭花了多少", on: now.addingTimeInterval(-86400), context: context)
+        let transport = try await answered("交通呢", after: lastMonth, context: context)
+        #expect(transport.answer.headline == "本月「交通」支出 ¥4.00，共 1 笔。")
     }
 }

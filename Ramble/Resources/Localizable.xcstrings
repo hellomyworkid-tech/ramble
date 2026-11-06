@@ -953,6 +953,28 @@
         }
       }
     },
+    "%lld 个问题" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld question"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld questions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld 个附件" : {
       "localizations" : {
         "en" : {
@@ -1763,6 +1785,16 @@
         }
       }
     },
+    "Apple Pay 自动记账" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Pay Auto-Logging"
+          }
+        }
+      }
+    },
     "CSV 可以用 Excel、Numbers 打开。导入支持其他记账 App 导出的 CSV，以及微信支付、支付宝的账单文件。" : {
       "localizations" : {
         "en" : {
@@ -2076,12 +2108,32 @@
         }
       }
     },
+    "「%@」\n已记的账会保留。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”\nEntries already logged will be kept."
+          }
+        }
+      }
+    },
     "「%@」\n附带的图片和文件会一起删除，由它生成的待办会保留。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@”\nIts photos and files will be deleted too. To-dos created from it will be kept."
+          }
+        }
+      }
+    },
+    "「%@」不是支出金额，没有记账。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn't an amount spent, so nothing was logged."
           }
         }
       }
@@ -2132,6 +2184,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Previous"
+          }
+        }
+      }
+    },
+    "上一个问题：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous question: %@"
           }
         }
       }
@@ -2392,6 +2454,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Reminder"
+          }
+        }
+      }
+    },
+    "不用 AI，直接记进账本。放进快捷指令的「钱包」自动化，Apple Pay 付款后就会自动记账：金额、商家和卡片从交易里取。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goes straight into your ledger, no AI. Put it in a Wallet automation in Shortcuts and every Apple Pay payment is logged by itself, with the amount, merchant and card from the transaction."
           }
         }
       }
@@ -2762,6 +2834,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Paid From"
+          }
+        }
+      }
+    },
+    "以上是 iOS 27 的界面。iOS 26 在「自动化」页新建自动化，选「钱包」和「立即运行」，变量叫「快捷指令输入」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These steps are for iOS 27. On iOS 26, create the automation on the Automation tab, choose Wallet and Run Immediately, and use the Shortcut Input variable."
           }
         }
       }
@@ -3334,6 +3416,16 @@
         }
       }
     },
+    "关掉「运行时显示」，不然每次付款都要点一下「完成」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn off Show When Run, or you'll have to tap Done after every payment."
+          }
+        }
+      }
+    },
     "关闭" : {
       "localizations" : {
         "en" : {
@@ -3472,6 +3564,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Category Name"
+          }
+        }
+      }
+    },
+    "分类和账户跟这个商家上次记的一样，所以改过一次，下次就对了。没记过的商家按名字猜分类，猜不到算「其他」。卡片名字和账户名字对得上，就记到那个账户。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The category and account match the last entry for that merchant, so correcting one fixes the next. A new merchant's category is guessed from its name, or set to Other. When the card's name matches an account's, it goes to that account."
           }
         }
       }
@@ -3656,6 +3758,16 @@
         }
       }
     },
+    "删除这个对话？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this conversation?"
+          }
+        }
+      }
+    },
     "删除这个笔记？" : {
       "localizations" : {
         "en" : {
@@ -3702,6 +3814,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete Entry"
+          }
+        }
+      }
+    },
+    "删除这笔应付？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this payable?"
+          }
+        }
+      }
+    },
+    "删除这笔应收？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this receivable?"
           }
         }
       }
@@ -3934,12 +4066,32 @@
         }
       }
     },
+    "卡片" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Card"
+          }
+        }
+      }
+    },
     "即将到期" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Due Soon"
+          }
+        }
+      }
+    },
+    "历史对话" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Past Conversations"
           }
         }
       }
@@ -4222,6 +4374,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Only the totals and category amounts in this report are sent — not the notes on each entry — directly to %@ with your own API key."
+          }
+        }
+      }
+    },
+    "只有在实体店刷 Apple Pay 才会触发，网上和 App 里付款不会，这是系统的限制。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only in-store Apple Pay payments trigger it, not those online or in apps. That's a system limit."
           }
         }
       }
@@ -4590,6 +4752,16 @@
         }
       }
     },
+    "商家" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merchant"
+          }
+        }
+      }
+    },
     "回到最新" : {
       "localizations" : {
         "en" : {
@@ -4650,12 +4822,32 @@
         }
       }
     },
+    "在「快捷指令」里设置一次" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set Up Once in Shortcuts"
+          }
+        }
+      }
+    },
     "在上面选中文字，可以设提醒或高亮。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Select text above to set a reminder or highlight it."
+          }
+        }
+      }
+    },
+    "在下方搜索「记一笔支出」，点它加进来。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search below for Log an Expense and tap it to add it."
           }
         }
       }
@@ -4686,6 +4878,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create one on the provider's website. Local services you run yourself, like Ollama, don't need a key — enter anything."
+          }
+        }
+      }
+    },
+    "在系统「设置 › App › 钱包」里打开「蜂窝数据」。有人遇到过关着时自动化不运行。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Cellular Data in Settings › Apps › Wallet. Some people have found the automation doesn't run with it off."
           }
         }
       }
@@ -5350,6 +5552,16 @@
         }
       }
     },
+    "已删除这条记录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entry deleted"
+          }
+        }
+      }
+    },
     "已存储到相册" : {
       "localizations" : {
         "en" : {
@@ -5600,6 +5812,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "已记一笔%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "已记一笔：%1$@ %2$@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged: %1$@ %2$@"
           }
         }
       }
@@ -6134,6 +6356,16 @@
         }
       }
     },
+    "想先试试：在快捷指令里删掉「轻触任一卡片时」，金额填个数字，点运行按钮，看账本里有没有多一笔。试完记得把它加回来。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To try it first: remove “When Any Card is tapped” from the shortcut, enter a number for the amount, tap the run button and check your ledger. Add the trigger back afterwards."
+          }
+        }
+      }
+    },
     "想得最仔细，适合复杂的长文件。可能要十几秒到一分钟，费用明显更高。" : {
       "localizations" : {
         "en" : {
@@ -6210,6 +6442,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open “%@”"
+          }
+        }
+      }
+    },
+    "打开快捷指令" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Shortcuts"
           }
         }
       }
@@ -6568,6 +6810,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Base URL"
+          }
+        }
+      }
+    },
+    "接着问，比如「上个月呢」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow up, like “last month?”"
           }
         }
       }
@@ -7234,12 +7486,32 @@
         }
       }
     },
+    "新对话" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Conversation"
+          }
+        }
+      }
+    },
     "新建" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "New"
+          }
+        }
+      }
+    },
+    "新建一个快捷指令，在操作列表上方点「自动化」，往下找到「钱包」。出现「轻触任一卡片时」就对了。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a new shortcut. Above the list of actions, tap Automation and scroll to Wallet. You should see “When Any Card is tapped”."
           }
         }
       }
@@ -8478,6 +8750,16 @@
         }
       }
     },
+    "正在看" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing now"
+          }
+        }
+      }
+    },
     "正在识别" : {
       "localizations" : {
         "en" : {
@@ -9098,6 +9380,16 @@
         }
       }
     },
+    "没记上的话" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If Nothing Gets Logged"
+          }
+        }
+      }
+    },
     "没说" : {
       "localizations" : {
         "en" : {
@@ -9228,22 +9520,12 @@
         }
       }
     },
-    "清空所有问答记录？" : {
+    "清空所有对话？" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear all questions and answers?"
-          }
-        }
-      }
-    },
-    "清空记录" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear History"
+            "value" : "Clear All Conversations?"
           }
         }
       }
@@ -9254,6 +9536,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Source Code (Open Source)"
+          }
+        }
+      }
+    },
+    "点「记一笔支出」右边的箭头。「商家」用同样的办法选「交易」里的「商家」，「卡片」选「卡片或凭证」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the arrow to the right of Log an Expense. The same way, choose Merchant from Transaction for Merchant, and Card or Pass for Card."
+          }
+        }
+      }
+    },
+    "点「金额」，在键盘上方那一排往左滑到「交易」并点它；再点一下这个「交易」，选「数量」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Amount, swipe along the row above the keyboard to Transaction and tap it. Tap Transaction again and choose Amount."
           }
         }
       }
@@ -9284,6 +9586,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap the paperclip to add photos or files (medical reports, contracts, invoices…) for the AI to read. You can also write what you want it to do."
+          }
+        }
+      }
+    },
+    "点左上角返回。下次付款后，账本里就多了这一笔。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap back at the top left. After your next payment, it's in your ledger."
           }
         }
       }
@@ -9394,6 +9706,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tiling labor"
+          }
+        }
+      }
+    },
+    "用 Apple Pay 付款后自动记一笔：金额、商家和卡片都从交易里取，不用打字，也不用 AI。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log every Apple Pay payment by itself, with the amount, merchant and card from the transaction. No typing and no AI."
           }
         }
       }
@@ -10196,6 +10518,16 @@
         }
       }
     },
+    "花了多少？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much was it?"
+          }
+        }
+      }
+    },
     "范围" : {
       "localizations" : {
         "en" : {
@@ -10376,12 +10708,42 @@
         }
       }
     },
+    "记一笔支出" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log an Expense"
+          }
+        }
+      }
+    },
+    "记一笔支出 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log an expense of %@"
+          }
+        }
+      }
+    },
     "记一笔收款…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Log Money Received…"
+          }
+        }
+      }
+    },
+    "记下来的是什么" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Gets Logged"
           }
         }
       }
@@ -11178,6 +11540,16 @@
         }
       }
     },
+    "还没有历史对话" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Past Conversations"
+          }
+        }
+      }
+    },
     "还没有填 %@ 的 API Key。" : {
       "localizations" : {
         "en" : {
@@ -11328,12 +11700,12 @@
         }
       }
     },
-    "这个问题（问笔记内容时还有相关的几段笔记）会用你自己的 API Key 直接发送到 %@。账目数字始终在手机上计算。" : {
+    "这个问题（接着问时还有上一问，问笔记内容时还有相关的几段笔记）会用你自己的 API Key 直接发送到 %@。账目数字始终在手机上计算。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This question (plus a few related note entries when it's about your notes) is sent with your own API key directly to %@. Ledger numbers are always calculated on your iPhone."
+            "value" : "This question (plus the one before it when you follow up, and a few related note entries when it's about your notes) is sent with your own API key directly to %@. Ledger numbers are always calculated on your iPhone."
           }
         }
       }
@@ -11780,6 +12152,16 @@
         }
       }
     },
+    "金额带外币符号时按那种货币记。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An amount with a foreign currency sign is logged in that currency."
+          }
+        }
+      }
+    },
     "金额每期不固定" : {
       "localizations" : {
         "en" : {
@@ -11846,6 +12228,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ask how much you spent, where it went, what's left to do, what's expiring, or anything you wrote in your notes."
+          }
+        }
+      }
+    },
+    "问过的问题会按对话留在这里。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your questions are kept here, conversation by conversation."
           }
         }
       }
@@ -11926,6 +12318,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Attachments (photos, files) sync too and use iCloud storage."
+          }
+        }
+      }
+    },
+    "附带的图片和文件会一起删除，由它生成的待办会保留。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its photos and files will be deleted too. To-dos created from it will be kept."
           }
         }
       }

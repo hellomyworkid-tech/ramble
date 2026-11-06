@@ -247,9 +247,10 @@ struct PendingRestore {
 extension View {
     /// 「用这个备份替换现在的数据？」 before a restore.
     func restoreConfirmation(_ pending: Binding<PendingRestore?>, perform: @escaping (PendingRestore) -> Void) -> some View {
-        confirmationDialog(String(localized: "用这个备份替换现在的数据？"),
-                           isPresented: Binding(get: { pending.wrappedValue != nil }, set: { if !$0 { pending.wrappedValue = nil } }),
-                           titleVisibility: .visible, presenting: pending.wrappedValue) { restore in
+        alert(String(localized: "用这个备份替换现在的数据？"),
+              isPresented: Binding(get: { pending.wrappedValue != nil }, set: { if !$0 { pending.wrappedValue = nil } }),
+              presenting: pending.wrappedValue) { restore in
+            Button("取消", role: .cancel) {}
             Button("替换为这个备份", role: .destructive) { perform(restore) }
         } message: { restore in
             let when = restore.file.createdAt.formatted(date: .abbreviated, time: .shortened)

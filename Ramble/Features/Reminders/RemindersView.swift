@@ -24,6 +24,8 @@ struct RemindersView: View {
     @State private var payingBill: Bill?
     @State private var isCreatingBill = false
     @State private var isCreatingExpiry = false
+    @State private var confirmDeleteBill: Bill?
+    @State private var confirmDeleteExpiry: ExpiryItem?
     /// The bill or expiry a reminder led to, tinted for a moment.
     @State private var spotlit: PersistentIdentifier?
 
@@ -48,6 +50,16 @@ struct RemindersView: View {
                 }
                 .overlay { emptyState }
                 .deletionUndoBar()
+                .deletionAlert(String(localized: "删除这个账单？已记的账会保留。"), item: $confirmDeleteBill) { bill in
+                    Button("删除", role: .destructive) { delete(bill, named: bill.name) }
+                } message: { bill in
+                    Text("「\(bill.name)」")
+                }
+                .deletionAlert(String(localized: "删除这个到期提醒？"), item: $confirmDeleteExpiry) { item in
+                    Button("删除", role: .destructive) { delete(item, named: item.name) }
+                } message: { item in
+                    Text("「\(item.name)」")
+                }
                 .navigationTitle("提醒")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -135,15 +147,15 @@ struct RemindersView: View {
                                     .tint(ModuleColor.money)
                             }
                         }
-                        .swipeActions {
-                            Button("删除", systemImage: "trash", role: .destructive) { delete(bill, named: bill.name) }
+                        .swipeActions(allowsFullSwipe: false) {
+                            SwipeDeleteButton { confirmDeleteBill = bill }
                         }
                         .contextMenu {
                             if bill.isActive {
                                 Button("已支付", systemImage: "checkmark.circle") { payingBill = bill }
                             }
                             Button("编辑", systemImage: "pencil") { editingBill = bill }
-                            Button("删除", systemImage: "trash", role: .destructive) { delete(bill, named: bill.name) }
+                            Button("删除", systemImage: "trash", role: .destructive) { confirmDeleteBill = bill }
                         }
                         .id(bill.persistentModelID)
                         .spotlit(spotlit == bill.persistentModelID, ModuleColor.bills)
@@ -173,7 +185,8 @@ struct RemindersView: View {
                     ExpiryRow(item: item)
                         .contentShape(.rect)
                         .onTapGesture { editingExpiry = item }
-                        .swipeActions(edge: .leading) {
+                        // A long swipe only shows it: it moves the date on, with no 撤销.
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             if item.renewalMonths > 0 {
                                 Button("已续期", systemImage: "arrow.clockwise") {
                                     withAnimation { item.renew() }
@@ -181,8 +194,8 @@ struct RemindersView: View {
                                 .tint(ModuleColor.expiry)
                             }
                         }
-                        .swipeActions {
-                            Button("删除", systemImage: "trash", role: .destructive) { delete(item, named: item.name) }
+                        .swipeActions(allowsFullSwipe: false) {
+                            SwipeDeleteButton { confirmDeleteExpiry = item }
                         }
                         .id(item.persistentModelID)
                         .spotlit(spotlit == item.persistentModelID, ModuleColor.expiry)

@@ -17,6 +17,7 @@ struct BudgetsView: View {
 
     @State private var amountTarget: AmountTarget?
     @State private var amountText = ""
+    @State private var confirmDelete: Budget?
 
     init() {
         let start = Date.now.startOfMonth()
@@ -47,11 +48,10 @@ struct BudgetsView: View {
                                       spent: spent(in: category), budget: budget.amount, currency: baseCurrency)
                         }
                         .buttonStyle(.plain)
+                        .swipeActions(allowsFullSwipe: false) {
+                            SwipeDeleteButton { confirmDelete = budget }
+                        }
                     }
-                }
-                .onDelete { offsets in
-                    let list = categoryBudgets
-                    offsets.forEach { context.delete(list[$0]) }
                 }
 
                 let available = categories.filter { category in
@@ -83,6 +83,13 @@ struct BudgetsView: View {
             Button("取消", role: .cancel) { amountTarget = nil }
         } message: {
             Text("每月 \(baseCurrency)")
+        }
+        // No 撤销 here: it goes at once.
+        .deletionAlert(confirmDelete?.category.map { String(localized: "删除「\(String(localized: "\($0.name)预算"))」？") } ?? "",
+                       item: $confirmDelete) { budget in
+            Button("删除", role: .destructive) { context.delete(budget) }
+        } message: { budget in
+            Text(budget.amount.money(baseCurrency))
         }
     }
 

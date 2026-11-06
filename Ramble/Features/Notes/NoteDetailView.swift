@@ -24,7 +24,9 @@ struct NoteDetailView: View {
     @State private var photoMessage: String?
     @State private var documentReading: DocumentReading?
     @State private var highlightingEntry: NoteEntry?
+    @State private var confirmDeleteEntry: NoteEntry?
     @State private var showsImportantOnly = false
+    @State private var hasOpened = false
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -65,11 +67,16 @@ struct NoteDetailView: View {
                                               Task { photoMessage = await PhotoSaver.saveAndDescribe(data) }
                                           })
                                 .equatable()
+                                // Tapping an entry puts the composer's keyboard away, as in a conversation.
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(.rect)
+                                .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
                                 .id(entry.persistentModelID)
                                 .listRowBackground(entry.isKeyPoint ? ModuleColor.keyPointTint : nil)
                                 .contextMenu { menu(for: entry) }
-                                .swipeActions {
-                                    Button("删除", systemImage: "trash", role: .destructive) { delete(entry) }
+                                // 删除 asks first, and a long swipe doesn't run it.
+                                .swipeActions(allowsFullSwipe: false) {
+                                    SwipeDeleteButton { confirmDeleteEntry = entry }
                                     Button("编辑", systemImage: "pencil") { editingEntry = entry }
                                         .tint(.gray)
                                 }
@@ -87,16 +94,18 @@ struct NoteDetailView: View {
                     }
                 }
             }
-            // Tapping the entries puts the composer's keyboard away, as in a conversation.
-            .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
             .deletionUndoBar()
             .safeAreaInset(edge: .bottom) { composer }
-            .onChange(of: note.entries?.count) {
-                if let last = note.sortedEntries.last {
-                    withAnimation { proxy.scrollTo(last.persistentModelID, anchor: .bottom) }
-                }
+            // To a record just added. One deleted leaves the page where it is: the count only drops
+            // when 撤销 runs out, seconds later, perhaps with the page somewhere else by then.
+            .onChange(of: note.entries?.count) { old, new in
+                guard (new ?? 0) > (old ?? 0), let last = note.sortedEntries.last else { return }
+                withAnimation { proxy.scrollTo(last.persistentModelID, anchor: .bottom) }
             }
+            // Once: this runs again whenever the page comes back into view.
             .onAppear {
+                guard !hasOpened else { return }
+                hasOpened = true
                 if let last = note.sortedEntries.last { proxy.scrollTo(last.persistentModelID, anchor: .bottom) }
                 if note.sortedEntries.isEmpty { composerFocused = note.title.isEmpty == false }
             }
@@ -121,6 +130,13 @@ struct NoteDetailView: View {
         .attachmentPickers(state: $picker) { pending.append($0) }
         .attachmentPreview($preview)
         .transientMessage($photoMessage)
+        .deletionAlert(String(localized: "删除这条记录？"), item: $confirmDeleteEntry) { entry in
+            Button("删除", role: .destructive) { delete(entry) }
+        } message: { entry in
+            entry.text.isEmpty
+                ? Text("附带的图片和文件会一起删除，由它生成的待办会保留。")
+                : Text("「\(entry.text.count > 40 ? String(entry.text.prefix(40)) + "…" : entry.text)」\n附带的图片和文件会一起删除，由它生成的待办会保留。")
+        }
         .sheet(item: $review) { item in
             NavigationStack {
                 NoteReviewSheet(review: item, reorganize: { attempt in
@@ -200,11 +216,12 @@ struct NoteDetailView: View {
         return Dictionary(grouping: shown) { Calendar.current.startOfDay(for: $0.date) }
     }
 
-    /// Straight away, with 撤销 at the bottom for a few seconds; its photos and files go with it,
+    /// Once confirmed, with 撤销 at the bottom for a few seconds; its photos and files go with it,
     /// the to-dos made from it stay.
     private func delete(_ entry: NoteEntry) {
         let excerpt = entry.text.count > 20 ? String(entry.text.prefix(20)) + "…" : entry.text
-        PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(excerpt)」"), in: context) { [note] in
+        let message = excerpt.isEmpty ? String(localized: "已删除这条记录") : String(localized: "已删除「\(excerpt)」")
+        PendingDeletion.shared.delete([entry], message: message, in: context) { [note] in
             note.updatedAt = .now
         }
     }
@@ -245,7 +262,7 @@ struct NoteDetailView: View {
         }
         Button("编辑", systemImage: "pencil") { editingEntry = entry }
         Button("拷贝", systemImage: "doc.on.doc") { UIPasteboard.general.string = entry.text }
-        Button("删除", systemImage: "trash", role: .destructive) { delete(entry) }
+        Button("删除", systemImage: "trash", role: .destructive) { confirmDeleteEntry = entry }
     }
 
     // MARK: - Composer
@@ -254,7 +271,7 @@ struct NoteDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             if !pending.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AttachmentTile.removeOutset) {
                         if pending.contains(where: { DocumentText.isReadable(kind: $0.kind, contentType: $0.contentType, fileName: $0.fileName) }) {
                             Button {
                                 documentReading = DocumentReading(files: pending, destination: .newEntry(note),
@@ -275,18 +292,14 @@ struct NoteDetailView: View {
                         }
                         ForEach(pending) { item in
                             AttachmentTile(kind: item.kind, thumbnail: item.thumbnail, fileName: item.fileName, size: 56)
-                                .overlay(alignment: .topTrailing) {
-                                    Button("移除", systemImage: "xmark.circle.fill") {
-                                        pending.removeAll { $0.id == item.id }
-                                    }
-                                    .labelStyle(.iconOnly)
-                                    .foregroundStyle(.white, .black.opacity(0.6))
-                                    .offset(x: 6, y: -6)
+                                .tileRemoveButton {
+                                    pending.removeAll { $0.id == item.id }
                                 }
                         }
                     }
-                    .padding(.top, 6)
-                    .padding(.horizontal, 2)
+                    .padding(.top, AttachmentTile.removeOutset)
+                    .padding(.leading, 2)
+                    .padding(.trailing, AttachmentTile.removeOutset)
                 }
             }
             if isOrganizing {

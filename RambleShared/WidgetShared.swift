@@ -119,14 +119,6 @@ nonisolated enum WidgetStore {
     }
 }
 
-/// How the capture sheet starts when something outside the app opens it.
-enum CaptureStart: Equatable {
-    /// Tidy this text straight away.
-    case text(String)
-    /// Start listening.
-    case voice
-}
-
 /// "记一笔": opens the capture sheet with what was said, and AI tidies it for review there, the
 /// same as typing it in the app. Without text it opens listening. Also what the Action Button
 /// and the Control Center button run, so it's in the widget extension too; it always runs in the app.

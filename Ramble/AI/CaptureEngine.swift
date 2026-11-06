@@ -179,6 +179,12 @@ nonisolated enum DraftParsing {
         return date
     }
 
+    /// The other way: "2026-10-15" in the current time zone.
+    static func day(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
     /// Finds the closest name: exact, then one containing the other.
     static func bestMatch<T>(_ name: String, in items: [T], name keyPath: (T) -> String) -> T? {
         let target = name.trimmed.lowercased()

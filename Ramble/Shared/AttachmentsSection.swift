@@ -100,8 +100,32 @@ nonisolated enum AttachmentImporter {
     }
 }
 
+extension View {
+    /// An × on a tile's corner. The glyph is small, so the place to tap is much bigger and reaches
+    /// mostly into the tile: a thumb aiming at the corner of a thumbnail easily lands on the picture.
+    func tileRemoveButton(action: @escaping () -> Void) -> some View {
+        overlay(alignment: .topTrailing) {
+            Button(action: action) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(.white, .black.opacity(0.55))
+                    .padding(8)
+                    .frame(width: 44, height: 44, alignment: .topTrailing)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("移除"))
+            .offset(x: AttachmentTile.removeOutset, y: -AttachmentTile.removeOutset)
+        }
+    }
+}
+
 /// A square tile: the thumbnail, or an icon and file name for documents.
 struct AttachmentTile: View {
+    /// How far the × of `tileRemoveButton` reaches past the tile: a row of tiles needs at least
+    /// this much room above, to the right and between them, or part of it can't be tapped.
+    static let removeOutset: CGFloat = 14
+
     let kind: AttachmentKind
     let thumbnail: Data?
     let fileName: String

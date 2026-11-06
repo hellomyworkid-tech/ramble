@@ -1,6 +1,16 @@
 import SwiftData
 import SwiftUI
 
+/// How the capture sheet starts when something outside the app opens it.
+enum CaptureStart: Equatable {
+    /// Tidy this text straight away.
+    case text(String)
+    /// Start listening.
+    case voice
+    /// What came from the share sheet: words are tidied straight away, files wait for 「AI 读一下」.
+    case shared(SharedItem)
+}
+
 /// "Just say it": speak or type → AI organizes → review, answering one follow-up
 /// question when the AI was unsure → save everything at once.
 struct CaptureSheet: View {
@@ -9,7 +19,7 @@ struct CaptureSheet: View {
     }
 
     enum ManualRoute: Hashable, Identifiable {
-        case task, entry, receipt, bill, expiry
+        case task, entry, receipt, bill, expiry, files
         var id: Self { self }
     }
 
@@ -50,7 +60,6 @@ struct CaptureSheet: View {
     @State private var files: [DraftAttachment] = []
     @State private var picker = AttachmentPickerState()
     @State private var preview: PreviewFile?
-    @State private var readsFiles = false
     @State private var editingDraft: CaptureDraft.ID?
     @State private var showsAISettings = false
     /// Which go at organizing the current input this is; 重新整理 counts up.
@@ -78,6 +87,8 @@ struct CaptureSheet: View {
             .navigationTitle(phase == .review ? "整理结果" : "记一下")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
+            // Through here rather than navigationDestination(isPresented:): that re-created a page
+            // with @Query in it endlessly (iOS 27), and 「AI 读一下」 hung with the app frozen.
             .navigationDestination(item: $manualRoute) { route in
                 switch route {
                 case .task: TaskEditorView(task: nil) { dismiss() }
@@ -85,10 +96,8 @@ struct CaptureSheet: View {
                 case .receipt: EntryEditorView(entry: nil, startsWithReceipt: true) { dismiss() }
                 case .bill: BillEditorView(bill: nil) { dismiss() }
                 case .expiry: ExpiryEditorView(item: nil) { dismiss() }
+                case .files: DocumentReaderView(files: files, destination: .anywhere, request: text, showsCancel: false) { dismiss() }
                 }
-            }
-            .navigationDestination(isPresented: $readsFiles) {
-                DocumentReaderView(files: files, destination: .anywhere, request: text, showsCancel: false) { dismiss() }
             }
             .attachmentPickers(state: $picker) { files.append($0) }
             .attachmentPreview($preview)
@@ -128,6 +137,8 @@ struct CaptureSheet: View {
                     Task { await organize(said) }
                 case .voice:
                     toggleMic(.note)
+                case .shared(let item):
+                    Task { await startShared(item) }
                 }
             }
             #if DEBUG
@@ -195,7 +206,7 @@ struct CaptureSheet: View {
                         } else {
                             Task {
                                 if recorder.state == .recording { await recorder.stop() }
-                                readsFiles = true
+                                manualRoute = .files
                             }
                         }
                     } label: {
@@ -273,7 +284,7 @@ struct CaptureSheet: View {
     @ViewBuilder
     private var fileStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: AttachmentTile.removeOutset) {
                 ForEach(files) { file in
                     Button {
                         preview = PreviewFile(draft: file, among: files)
@@ -281,20 +292,13 @@ struct CaptureSheet: View {
                         AttachmentTile(kind: file.kind, thumbnail: file.thumbnail, fileName: file.fileName, size: 64)
                     }
                     .buttonStyle(.plain)
-                    .overlay(alignment: .topTrailing) {
-                        Button("移除", systemImage: "xmark.circle.fill") {
-                            withAnimation { files.removeAll { $0.id == file.id } }
-                        }
-                        .labelStyle(.iconOnly)
-                        .font(.body)
-                        .foregroundStyle(.white, .black.opacity(0.55))
-                        .buttonStyle(.borderless)
-                        .offset(x: 6, y: -6)
+                    .tileRemoveButton {
+                        withAnimation { files.removeAll { $0.id == file.id } }
                     }
                 }
             }
-            .padding(.top, 6)
-            .padding(.trailing, 6)
+            .padding(.top, AttachmentTile.removeOutset)
+            .padding(.trailing, AttachmentTile.removeOutset)
         }
         if let message = picker.errorMessage {
             Text(message)
@@ -492,6 +496,24 @@ struct CaptureSheet: View {
         }
     }
 
+    /// Words are tidied straight away, like text from Siri. Files wait here, ready for 「AI 读一下」:
+    /// there's room to say what they are, and no model loads for a share opened by chance.
+    private func startShared(_ item: SharedItem) async {
+        text = item.text
+        guard !item.files.isEmpty else {
+            await organize(item.text)
+            return
+        }
+        for url in ShareInbox.shared?.urls(of: item) ?? [] {
+            do {
+                files.append(try AttachmentImporter.draft(fromFileAt: url))
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            await Task.yield()
+        }
+    }
+
     private func organize(_ input: String, attempt: AIAttempt = .first) async {
         let note = input.trimmed
         guard !note.isEmpty else { return }
@@ -575,6 +597,7 @@ struct CaptureSheet: View {
             draft.save(in: context, baseCurrency: baseCurrency, linking: entries)
         }
         try? context.save()
+        if ReviewPrompt.captureSaved() { ReviewPrompt.isDue = true }
         dismiss()
     }
 

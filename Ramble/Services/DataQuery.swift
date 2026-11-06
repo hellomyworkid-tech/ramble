@@ -157,13 +157,13 @@ nonisolated enum PeriodResolver {
             return (day(date > now ? cal.date(byAdding: .year, value: -1, to: date)! : date), String(m.0))
         }
         let named: [(Regex<Substring>, () -> QueryPeriod)] = [
-            (#/上上个?月/#, { month(containing: shifted(.month, -2), now: now) }),
-            (#/上个?月/#, { month(containing: shifted(.month, -1), now: now, label: String(localized: "上个月")) }),
-            (#/下个?月/#, { month(containing: shifted(.month, 1), now: now, label: String(localized: "下个月")) }),
+            (#/(?:上上|再上)1?个?月/#, { month(containing: shifted(.month, -2), now: now) }),
+            (#/上1?个?月/#, { month(containing: shifted(.month, -1), now: now, label: String(localized: "上个月")) }),
+            (#/下1?个?月/#, { month(containing: shifted(.month, 1), now: now, label: String(localized: "下个月")) }),
             (#/(?:这|本|当)个?月/#, { month(containing: now, now: now, label: String(localized: "本月")) }),
-            (#/上上个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, -14)) }),
-            (#/上个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, -7), label: String(localized: "上周")) }),
-            (#/下个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, 7), label: String(localized: "下周")) }),
+            (#/(?:上上|再上)1?个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, -14)) }),
+            (#/上1?个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, -7), label: String(localized: "上周")) }),
+            (#/下1?个?(?:周|星期|礼拜)/#, { week(containing: shifted(.day, 7), label: String(localized: "下周")) }),
             (#/(?:这|本)个?(?:周|星期|礼拜)/#, { week(containing: now, label: String(localized: "本周")) }),
             (#/(?:今天|今日)/#, { day(now).relabeled(String(localized: "今天")) }),
             (#/(?:昨天|昨日)/#, { day(shifted(.day, -1)).relabeled(String(localized: "昨天")) }),
@@ -243,6 +243,19 @@ nonisolated struct QueryPlan: Codable, Equatable {
     var taskState: TaskState = .open
 }
 
+extension QueryPlan.Subject {
+    /// Questions on the same topic keep each other's time: 「上个月花了多少」 then 「收入多少」.
+    nonisolated enum Topic { case money, schedule, notes }
+
+    nonisolated var topic: Topic {
+        switch self {
+        case .expense, .income, .balance: .money
+        case .tasks, .bills, .expiries: .schedule
+        case .notes: .notes
+        }
+    }
+}
+
 /// A category as the parser needs it.
 nonisolated struct CategoryInfo: Equatable {
     var name: String
@@ -257,6 +270,21 @@ nonisolated enum QuestionParser {
     struct Result {
         var plan: QueryPlan?
         var confident: Bool
+        /// The time the question's own words name. The rules are sure of these and a small model
+        /// isn't: Qwen3 read 「上个月」 on its own as this month.
+        var period: QueryPeriod?
+        /// Whether it may carry on from the question before, so AI should hear what that one looked up.
+        var carriesOn = false
+    }
+
+    /// What a question's own words name, as opposed to what it leaves to the question before.
+    private struct Named {
+        /// A category or merchant: 交通, 打车.
+        var what = false
+        /// 花了, 收入, 待办.
+        var subject = false
+        /// 最贵, 平均, 明细.
+        var measure = false
     }
 
     /// Everyday words for the built-in categories.
@@ -301,11 +329,14 @@ nonisolated enum QuestionParser {
                                  "上", "个", "这", "那", "些", "钱", "块", "元", "和", "跟", "与", "给", "共", "几", "最", "啥", "什么",
                                  "怎么样", "情况", "1些", "1点", "要", "完成", "做", "下", "笔", "事"]
 
-    static func parse(_ question: String, categories: [CategoryInfo], now: Date) -> Result {
+    /// `previous` is what the question before it in the conversation looked up: a follow-up says
+    /// only what changes (「上个月」「那交通呢」「平均每天呢」) and takes the rest from there.
+    static func parse(_ question: String, categories: [CategoryInfo], now: Date, after previous: QueryPlan? = nil) -> Result {
         var text = SpokenDate.normalizedNumbers(FillerCleaner.clean(question))
             .replacingOccurrences(of: #"[\s，,。.！!？?、~～]"#, with: "", options: .regularExpression)
         var plan = QueryPlan(subject: .expense)
         var subjectFound = false
+        var named = Named()
 
         if let (period, matched) = PeriodResolver.resolve(text, now: now) {
             plan.period = period
@@ -336,6 +367,7 @@ nonisolated enum QuestionParser {
                     text = text.replacingOccurrences(of: word, with: "")
                     if let category = categories.first(where: { $0.seedKey == key }) { plan.categories = [category.name] }
                     subjectFound = true
+                    named.what = true
                     break
                 }
             }
@@ -344,6 +376,7 @@ nonisolated enum QuestionParser {
             plan.categories = [matchedCategory.name]
             if matchedCategory.isIncome { plan.subject = .income }
             subjectFound = true
+            named.what = true
         }
 
         for (subject, words) in subjects {
@@ -352,14 +385,18 @@ nonisolated enum QuestionParser {
                 let keepsCurrent = subjectFound && (subject == .expense || subject == .notes)
                 if !keepsCurrent { plan.subject = subject }
                 subjectFound = true
+                named.subject = true
                 text = text.replacingOccurrences(of: word, with: "")
                 break
             }
         }
         for (measure, words) in measures {
-            if let word = words.sorted(by: { $0.count > $1.count }).first(where: { text.contains($0) }) {
+            let longestFirst = words.sorted { $0.count > $1.count }
+            if longestFirst.contains(where: text.contains) {
                 plan.measure = measure
-                text = text.replacingOccurrences(of: word, with: "")
+                named.measure = true
+                // All of them: 「平均每天」 is one thing said twice.
+                for word in longestFirst { text = text.replacingOccurrences(of: word, with: "") }
                 break
             }
         }
@@ -367,9 +404,10 @@ nonisolated enum QuestionParser {
         if !subjectFound, [.biggest, .top, .average, .compare].contains(plan.measure) || text.contains("笔") {
             subjectFound = true
         }
-        // "上周比上上周": a second period word is part of the comparison.
-        if plan.measure == .compare, let (_, matched) = PeriodResolver.resolve(text, now: now) {
+        // "上周比上上周": a second period word is part of the comparison, and the later one is compared.
+        if plan.measure == .compare, let (second, matched) = PeriodResolver.resolve(text, now: now) {
             text = text.replacingOccurrences(of: matched, with: "")
+            if let first = plan.period, second.start > first.start { plan.period = second }
         }
 
         switch plan.subject {
@@ -386,14 +424,66 @@ nonisolated enum QuestionParser {
         for word in filler.sorted(by: { $0.count > $1.count }) {
             text = text.replacingOccurrences(of: word, with: "")
         }
+        let isMarked = isMarkedAsCarryingOn(question)
+        let carriesOn = isMarked || !Punctuation.isMostlyChinese(question)
+        if let previous, let followUp = following(previous, own: plan, named: named, left: text, isMarked: isMarked, now: now) {
+            // 「上个月」 on its own can only be carrying on.
+            return Result(plan: followUp, confident: text.count <= 1, period: plan.period,
+                          carriesOn: carriesOn || (!named.subject && !named.what))
+        }
         guard subjectFound else {
+            // A past time on its own is asking about the money then. One still to come might be
+            // about to-dos or bills, which AI can tell.
+            if text.isEmpty, let period = plan.period, period.start <= now {
+                return Result(plan: plan, confident: true, period: period, carriesOn: carriesOn)
+            }
             // Nothing recognisable: whatever is left might be found in notes.
             let left = text.trimmingCharacters(in: .whitespaces)
             return Result(plan: left.isEmpty ? nil : QueryPlan(subject: .notes, measure: .list, period: plan.period, keywords: [left]),
-                          confident: false)
+                          confident: false, period: plan.period, carriesOn: carriesOn)
         }
         if !text.isEmpty, plan.keywords.isEmpty, text.count >= 2 { plan.keywords = [text] }
-        return Result(plan: plan, confident: text.count <= 1)
+        return Result(plan: plan, confident: text.count <= 1, period: plan.period, carriesOn: carriesOn)
+    }
+
+    /// Fills in what a question leaves out from the one before it, or nil if it stands alone.
+    private static func following(_ previous: QueryPlan, own plan: QueryPlan, named: Named, left: String, isMarked: Bool, now: Date) -> QueryPlan? {
+        var merged = plan
+        if !named.subject, !named.what {
+            if left.count >= 2 {
+                // 「星巴克呢」: a word the rules don't know, in place of what was asked about.
+                // Without 呢 or 那 it may as well be something new: 「血脂多少」.
+                guard isMarked, previous.subject.topic != .schedule else { return nil }
+                merged.keywords = [left]
+            } else {
+                // 「上个月」「平均每天呢」「明细」: the same thing again, with that changed.
+                guard named.measure || plan.period != nil else { return nil }
+                merged.keywords = previous.keywords
+                merged.categories = previous.categories
+            }
+            merged.subject = previous.subject
+            merged.taskState = previous.taskState
+            if !named.measure { merged.measure = previous.measure }
+        } else if !named.subject, !named.measure, plan.subject.topic == .money, previous.subject.topic == .money, previous.measure != .top {
+            // 「交通呢」: the same question about something else.
+            merged.measure = previous.measure
+        }
+        // The time carries over within a topic, or across when they say so: 「这周花了多少」, 「待办呢」.
+        if plan.period == nil, isMarked || merged.subject.topic == previous.subject.topic {
+            merged.period = previous.period
+        }
+        // 「和上个月比呢」: that month is what to compare with, not what's being asked about.
+        if named.measure, plan.measure == .compare, let own = plan.period,
+           let asked = previous.period ?? PeriodResolver.preset("thisMonth", now: now), own.start < asked.start {
+            merged.period = previous.period
+        }
+        return merged
+    }
+
+    /// 「那上个月呢」「交通呢」「再看看去年」. 那个, 那边 and the like are just saying which one.
+    private static func isMarkedAsCarryingOn(_ question: String) -> Bool {
+        let text = question.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        return text.hasSuffix("呢") || text.prefixMatch(of: #/那(?![个些边天次笔家里儿])|再|另外/#) != nil
     }
 
     /// Whether typed or spoken text is a question rather than something to record.
@@ -475,8 +565,9 @@ enum QueryRunner {
         let byKeyword = all.filter { entry in
             plan.keywords.contains { entry.note.localizedCaseInsensitiveContains($0) || (entry.category?.name.contains($0) ?? false) }
         }
-        // "打车" matched no note: fall back to the category it belongs to.
-        return byKeyword.isEmpty ? all.filter(inCategory) : byKeyword
+        // "打车" matched no note: fall back to the category it belongs to. A word with no category
+        // has nothing to fall back on, and everything spent isn't what it cost.
+        return byKeyword.isEmpty && !categories.isEmpty ? all.filter(inCategory) : byKeyword
     }
 
     private static func subjectWord(_ plan: QueryPlan, kind: EntryKind) -> String {

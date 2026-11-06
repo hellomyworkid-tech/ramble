@@ -100,7 +100,8 @@ struct ExpiryEditorView: View {
                     .disabled(name.trimmed.isEmpty)
             }
         }
-        .confirmationDialog("删除这个到期提醒？", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("删除这个到期提醒？", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 if let item { context.delete(item) }
                 finish()

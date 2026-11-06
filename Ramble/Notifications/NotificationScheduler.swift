@@ -109,6 +109,17 @@ final class NotificationScheduler {
         try? await center.add(Self.request(for: reminder, identifier: Self.snoozePrefix + UUID().uuidString))
     }
 
+    #if DEBUG
+    /// Goes through the same steps as a real reminder, for the interface test.
+    func fireTestReminder(title: String, id: String) async {
+        _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+        let reminder = PlannedReminder(target: .task, targetID: id, fireDate: .now.addingTimeInterval(8), title: title, body: "",
+                                       category: "", threadID: "")
+        // Named like a snoozed one, so the reschedule when the app becomes active leaves it alone.
+        try? await center.add(Self.request(for: reminder, identifier: Self.snoozePrefix + "test"))
+    }
+    #endif
+
     static func request(for reminder: PlannedReminder, identifier: String) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = reminder.title

@@ -173,7 +173,8 @@ struct AccountEditorView: View {
                     .disabled(name.trimmed.isEmpty)
             }
         }
-        .confirmationDialog("删除账户？相关的记账会保留，但不再关联这个账户。", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("删除账户？相关的记账会保留，但不再关联这个账户。", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 if let account { context.delete(account) }
                 dismiss()

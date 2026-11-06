@@ -40,7 +40,8 @@ struct PhotoMarkupView: View {
                         .disabled(isSaving)
                     }
                 }
-                .confirmationDialog("放弃这次标记？", isPresented: $confirmsDiscard, titleVisibility: .visible) {
+                .alert("放弃这次标记？", isPresented: $confirmsDiscard) {
+                    Button("取消", role: .cancel) {}
                     Button("放弃标记", role: .destructive) { dismiss() }
                 }
         }
