@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 enum LedgerRoute: Hashable, Identifiable {
-    case stats, accounts, categories, budgets
+    case stats, accounts, categories, budgets, projects, recurring
     var id: Self { self }
 }
 
@@ -33,6 +33,8 @@ struct LedgerView: View {
                         Button(String(localized: ScreenName.accounts), systemImage: "creditcard") { route = .accounts }
                         Button(String(localized: ScreenName.categories), systemImage: "square.grid.2x2") { route = .categories }
                         Button(String(localized: ScreenName.budgets), systemImage: "chart.pie") { route = .budgets }
+                        Button(String(localized: ScreenName.projects), systemImage: "folder") { route = .projects }
+                        Button(String(localized: ScreenName.recurring), systemImage: "arrow.triangle.2.circlepath") { route = .recurring }
                     }
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -46,6 +48,8 @@ struct LedgerView: View {
                 case .accounts: AccountsView()
                 case .categories: CategoriesView()
                 case .budgets: BudgetsView()
+                case .projects: ProjectsView()
+                case .recurring: RecurringEntriesView()
                 }
             }
             .sheet(isPresented: $isCreating) {
@@ -70,8 +74,7 @@ private struct MonthLedgerList: View {
     @Query private var queried: [LedgerEntry]
     @Query private var budgets: [Budget]
     @AppStorage(LedgerGrouping.storageKey) private var grouping = LedgerGrouping.date
-    @State private var editingEntry: LedgerEntry?
-    @State private var confirmDelete: LedgerEntry?
+    @State private var actions = EntryActions()
 
     init(month: Binding<Date>, baseCurrency: String) {
         _month = month
@@ -94,6 +97,7 @@ private struct MonthLedgerList: View {
                 MonthSwitcher(month: $month)
                 summary
                 OutstandingSummaryRow(baseCurrency: baseCurrency)
+                ProjectsSummaryRow()
             }
 
             // In the list rather than laid over it, so it sits under the summary however tall that is
@@ -118,7 +122,7 @@ private struct MonthLedgerList: View {
 
             switch grouping {
             case .date:
-                EntriesByDay(entries: entries, baseCurrency: baseCurrency, confirmDelete: $confirmDelete) { editingEntry = $0 }
+                EntriesByDay(entries: entries, baseCurrency: baseCurrency, actions: $actions)
             case .category:
                 categorySection(.expense)
                 categorySection(.income)
@@ -126,10 +130,7 @@ private struct MonthLedgerList: View {
             }
         }
         .deletionUndoBar()
-        .entryDeletionAlert($confirmDelete)
-        .sheet(item: $editingEntry) { entry in
-            NavigationStack { EntryEditorView(entry: entry) }
-        }
+        .entryActions($actions)
     }
 
     @ViewBuilder
@@ -195,8 +196,7 @@ private struct LedgerSearchResults: View {
     let baseCurrency: String
 
     @Query(sort: \LedgerEntry.date, order: .reverse) private var entries: [LedgerEntry]
-    @State private var editingEntry: LedgerEntry?
-    @State private var confirmDelete: LedgerEntry?
+    @State private var actions = EntryActions()
 
     var body: some View {
         let found = entries.filter { !PendingDeletion.shared.hides($0) && $0.matches(query) }
@@ -220,16 +220,13 @@ private struct LedgerSearchResults: View {
                     .font(.subheadline)
                 }
             }
-            EntriesByDay(entries: found, baseCurrency: baseCurrency, confirmDelete: $confirmDelete) { editingEntry = $0 }
+            EntriesByDay(entries: found, baseCurrency: baseCurrency, actions: $actions)
         }
         .overlay {
             if found.isEmpty { ContentUnavailableView.search(text: query) }
         }
         .deletionUndoBar()
-        .entryDeletionAlert($confirmDelete)
-        .sheet(item: $editingEntry) { entry in
-            NavigationStack { EntryEditorView(entry: entry) }
-        }
+        .entryActions($actions)
     }
 }
 
@@ -314,6 +311,11 @@ struct EntryRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if entry.refundedAmount > 0 {
+                    Text(entry.netAmount > 0 ? String(localized: "已退 \(entry.refundedAmount.money(entry.currencyCode))") : String(localized: "已全额退款"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -329,7 +331,7 @@ struct EntryRow: View {
     }
 
     private var amountText: String {
-        let money = entry.amount.money(entry.currencyCode)
+        let money = entry.netAmount.money(entry.currencyCode)
         switch entry.kind {
         case .expense: return "−" + money
         case .income: return "+" + money
@@ -343,6 +345,7 @@ struct EntryRow: View {
             parts.append("\(entry.account?.name ?? "?") → \(entry.toAccount?.name ?? "?")")
         } else {
             if !entry.note.isEmpty, let category = entry.category { parts.append(category.name) }
+            if let project = entry.project { parts.append(project.name) }
             if let account = entry.account { parts.append(account.name) }
         }
         parts.append(entry.date.formatted(date: .omitted, time: .shortened))

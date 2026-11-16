@@ -90,6 +90,12 @@ final class NotificationScheduler {
                                                        rules: bill.reminderRules, now: now)
         }
 
+        let waiting = (try? context.fetch(FetchDescriptor<RecurringEntry>(predicate: #Predicate { $0.isActive && $0.asksFirst }))) ?? []
+        reminders += waiting.compactMap { rule in
+            ReminderPlanner.recurringReminder(id: ModelRef.encode(rule.persistentModelID), name: rule.name, due: rule.nextDate,
+                                              amountText: rule.amount.money(rule.currencyCode), now: now)
+        }
+
         reminders += ReminderPlanner.reportReminders(weekly: ReportSettings.weeklyReminder, monthly: ReportSettings.monthlyReminder, now: now)
 
         let expiries = (try? context.fetch(FetchDescriptor<ExpiryItem>(predicate: #Predicate { !$0.isArchived }))) ?? []

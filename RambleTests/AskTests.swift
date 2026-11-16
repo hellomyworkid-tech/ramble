@@ -142,7 +142,7 @@ struct QuestionParserTests {
 
 @MainActor
 struct QueryRunnerTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func library() throws -> ModelContext {
         let context = container.mainContext
@@ -250,7 +250,7 @@ struct QueryRunnerTests {
 
 @MainActor
 struct ReportTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func lastWeekAgainstTheWeekBefore() throws {
         let context = container.mainContext
@@ -621,7 +621,7 @@ struct FollowUpTests {
 /// Follow-ups all the way to the answer, without AI.
 @MainActor
 struct AskFollowUpTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func library() throws -> ModelContext {
         let context = container.mainContext

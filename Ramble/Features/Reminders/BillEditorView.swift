@@ -96,10 +96,8 @@ struct BillEditorView: View {
                     }
                     Toggle("支付后自动记一笔还款", isOn: $autoRecord)
                 } else {
-                    Picker("记账分类", selection: $category) {
-                        Text("不指定").tag(LedgerCategory?.none)
-                        ForEach(categories.filter { $0.kind == .expense }) { Text($0.name).tag(Optional($0)) }
-                    }
+                    CategoryField(title: "记账分类", kind: .expense, categories: categories.filter { $0.kind == .expense },
+                                  selection: $category, noneTitle: "不指定")
                     Toggle("支付后自动记一笔支出", isOn: $autoRecord)
                 }
             } footer: {
@@ -146,6 +144,7 @@ struct BillEditorView: View {
                     .presentationDetents([.medium, .large])
             }
         }
+        .onChange(of: dueDate) { _, day in recurrence = recurrence?.following(day) }
         .onChange(of: kind) { _, newKind in
             if bill == nil, name.trimmed.isEmpty || BillKind.allCases.contains(where: { String(localized: $0.title) == name }) {
                 name = String(localized: newKind.title)

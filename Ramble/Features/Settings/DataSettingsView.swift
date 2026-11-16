@@ -263,6 +263,9 @@ extension View {
 /// The automatic backups, newest first. Picking one brings it down from iCloud Drive if needed,
 /// then restores it after asking.
 struct AutoBackupsView: View {
+    /// Asks and restores here, unless the recovery page has its own way of doing that.
+    var restore: ((PendingRestore) -> Void)?
+
     @Environment(\.modelContext) private var context
     @State private var backups: [AutoBackup.Saved] = []
     @State private var isLoading = true
@@ -321,7 +324,8 @@ struct AutoBackupsView: View {
         Task {
             do {
                 let file = try await AutoBackup.download(backup) { progress = $0 }
-                pendingRestore = PendingRestore(file: file, source: BackupFolderSource(folder: backup.url.deletingLastPathComponent()))
+                let picked = PendingRestore(file: file, source: BackupFolderSource(folder: backup.url.deletingLastPathComponent()))
+                if let restore { restore(picked) } else { pendingRestore = picked }
             } catch {
                 message = error.localizedDescription
             }

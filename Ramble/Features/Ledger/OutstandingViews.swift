@@ -332,10 +332,8 @@ struct OutstandingEditorView: View {
             }
 
             Section {
-                Picker("分类", selection: $category) {
-                    Text("未分类").tag(LedgerCategory?.none)
-                    ForEach(categories.filter { $0.kind == direction.categoryKind }) { Text($0.name).tag(Optional($0)) }
-                }
+                CategoryField(title: "分类", kind: direction.categoryKind,
+                              categories: categories.filter { $0.kind == direction.categoryKind }, selection: $category)
                 Picker(direction == .receivable ? "收款账户" : "付款账户", selection: $account) {
                     Text("不指定").tag(Account?.none)
                     ForEach(accounts) { Text($0.name).tag(Optional($0)) }
@@ -354,7 +352,7 @@ struct OutstandingEditorView: View {
                 Section {
                     ForEach((item.settlements ?? []).sorted { $0.date > $1.date }) { entry in
                         LabeledContent(DayText.dayWithWeekday(entry.date)) {
-                            Text(entry.amount.money(entry.currencyCode))
+                            Text(entry.netAmount.money(entry.currencyCode))
                                 .monospacedDigit()
                         }
                     }

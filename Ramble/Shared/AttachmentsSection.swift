@@ -101,16 +101,15 @@ nonisolated enum AttachmentImporter {
 }
 
 extension View {
-    /// An × on a tile's corner. The glyph is small, so the place to tap is much bigger and reaches
-    /// mostly into the tile: a thumb aiming at the corner of a thumbnail easily lands on the picture.
+    /// An × on a tile's corner: centered on the glyph and slightly larger than it so the corner is
+    /// easy to hit, without reaching into the middle of the thumbnail where a tap opens it.
     func tileRemoveButton(action: @escaping () -> Void) -> some View {
         overlay(alignment: .topTrailing) {
             Button(action: action) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.body)
-                    .foregroundStyle(.white, .black.opacity(0.55))
-                    .padding(8)
-                    .frame(width: 44, height: 44, alignment: .topTrailing)
+                    .foregroundStyle(.white, .black.opacity(0.6))
+                    .frame(width: 28, height: 28)
                     .contentShape(.rect)
             }
             .buttonStyle(.borderless)
@@ -124,7 +123,7 @@ extension View {
 struct AttachmentTile: View {
     /// How far the × of `tileRemoveButton` reaches past the tile: a row of tiles needs at least
     /// this much room above, to the right and between them, or part of it can't be tapped.
-    static let removeOutset: CGFloat = 14
+    static let removeOutset: CGFloat = 12
 
     let kind: AttachmentKind
     let thumbnail: Data?
@@ -223,13 +222,13 @@ struct AttachmentsSection: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 8)], alignment: .leading, spacing: 8) {
                     ForEach(attachments) { item in
                         Button {
-                            preview = previewFile(for: item)
+                            preview = .forDraft(item, in: $attachments)
                         } label: {
                             AttachmentTile(kind: item.kind, thumbnail: item.thumbnail, fileName: item.fileName)
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button("预览", systemImage: "eye") { preview = previewFile(for: item) }
+                            Button("预览", systemImage: "eye") { preview = .forDraft(item, in: $attachments) }
                             if item.kind == .image {
                                 Button("存储到相册", systemImage: "square.and.arrow.down") {
                                     let data = item.data
@@ -270,15 +269,6 @@ struct AttachmentsSection: View {
                 didAutoPresent = true
                 picker.showsPhotos = true
             }
-        }
-    }
-
-    /// Marking up a photo here changes the draft; the form's 保存 keeps it, 取消 doesn't.
-    private func previewFile(for item: DraftAttachment) -> PreviewFile {
-        PreviewFile(draft: item, among: attachments) { id, photo, thumbnail in
-            guard let index = attachments.firstIndex(where: { $0.id == id }) else { return }
-            attachments[index].newData = photo
-            attachments[index].thumbnail = thumbnail
         }
     }
 }
@@ -376,6 +366,15 @@ struct PreviewFile: Identifiable {
     let load: () -> Data?
     var photos: [ViewerPhoto] = []
     var start = 0
+
+    /// Opens a draft photo or file; marking up a photo keeps the changes in `drafts`.
+    static func forDraft(_ item: DraftAttachment, in drafts: Binding<[DraftAttachment]>) -> PreviewFile {
+        PreviewFile(draft: item, among: drafts.wrappedValue) { id, photo, thumbnail in
+            guard let index = drafts.wrappedValue.firstIndex(where: { $0.id == id }) else { return }
+            drafts.wrappedValue[index].newData = photo
+            drafts.wrappedValue[index].thumbnail = thumbnail
+        }
+    }
 
     /// `drafts`: the attachments shown alongside it. `onMarkup` keeps a marked-up photo (the
     /// draft's id, the photo, its thumbnail); without it the viewer doesn't offer 标记.

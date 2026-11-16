@@ -28,7 +28,7 @@ struct AddTaskIntent: AppIntent {
             dueDate = spoken.date
             hasTime = spoken.hasTime
         }
-        let context = AppSchema.shared.mainContext
+        let context = try AppSchema.liveContext()
         context.insert(TaskItem(title: name, dueDate: dueDate, hasDueTime: hasTime))
         try context.save()
         _ = await NotificationScheduler.shared.reschedule()
@@ -66,7 +66,7 @@ struct AddExpenseIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        let context = AppSchema.shared.mainContext
+        let context = try AppSchema.liveContext()
         guard let payment = PaymentAmount(amount, baseCurrency: LedgerSummary.baseCurrency) else {
             let text = String(localized: "「\(amount)」不是支出金额，没有记账。")
             return .result(value: text, dialog: IntentDialog(stringLiteral: text))
@@ -100,7 +100,7 @@ struct SpendingIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
-        let context = AppSchema.shared.mainContext
+        let context = try AppSchema.liveContext()
         let summaryPeriod = period.summaryPeriod
         let total = LedgerSummary.expenses(in: LedgerSummary.interval(summaryPeriod), categoryName: category?.name, context: context)
         let currency = LedgerSummary.baseCurrency
@@ -157,7 +157,7 @@ struct CategoryQuery: EntityStringQuery {
         let expense = CategoryKind.expense.rawValue
         let descriptor = FetchDescriptor<LedgerCategory>(predicate: #Predicate { $0.kindRaw == expense },
                                                          sortBy: [SortDescriptor(\.sortOrder)])
-        let categories = try AppSchema.shared.mainContext.fetch(descriptor)
+        let categories = try AppSchema.liveContext().fetch(descriptor)
         var seen = Set<String>()
         return categories.compactMap { seen.insert($0.name).inserted ? CategoryEntity(name: $0.name) : nil }
     }
@@ -177,7 +177,7 @@ struct AskQuestionIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         do {
-            let answer = try await AskEngine.ask(question, context: AppSchema.shared.mainContext)
+            let answer = try await AskEngine.ask(question, context: AppSchema.liveContext())
             // Each one stands alone, so it's a conversation of its own.
             AskHistory.add(AskRecord(date: .now, question: question, answer: answer, currency: LedgerSummary.baseCurrency), to: UUID())
             var spoken = answer.headline

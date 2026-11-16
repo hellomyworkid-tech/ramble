@@ -101,6 +101,8 @@ nonisolated enum ScreenName {
     static let accounts = LocalizedStringResource("screen.accounts", defaultValue: "账户")
     static let categories = LocalizedStringResource("screen.categories", defaultValue: "分类")
     static let budgets = LocalizedStringResource("screen.budgets", defaultValue: "预算")
+    static let projects = LocalizedStringResource("screen.projects", defaultValue: "项目")
+    static let recurring = LocalizedStringResource("screen.recurring", defaultValue: "定期记账")
 }
 
 nonisolated enum AppLanguage {

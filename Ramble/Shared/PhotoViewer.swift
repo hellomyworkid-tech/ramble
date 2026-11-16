@@ -132,6 +132,7 @@ struct PhotoViewer: View {
     /// note jumped back to its last entry when the photo was closed.
     static func present(_ photos: [ViewerPhoto], at index: Int) {
         guard let top = UIApplication.shared.topViewController else { return }
+        top.view.endEditing(true)
         weak var shown: UIViewController?
         let host = UIHostingController(rootView: PhotoViewer(photos: photos, index: index) { shown?.dismiss(animated: true) })
         shown = host

@@ -81,7 +81,7 @@ final class AppRouter {
 
     func open(_ target: PlannedReminder.Target?, id: String, pay: Bool = false) {
         guard let target else { return }
-        if target == .openApp {
+        if target == .openApp || target == .recurring {
             tab = .today
             return
         }
@@ -100,7 +100,7 @@ final class AppRouter {
         case .expiry:
             tab = .reminders
             focus = .expiry(identifier)
-        case .openApp, .report:
+        case .openApp, .report, .recurring:
             break
         }
     }

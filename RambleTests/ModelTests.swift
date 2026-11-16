@@ -4,7 +4,7 @@ import Testing
 @testable import Ramble
 
 struct ModelTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func payingRecurringBillRecordsExpenseAndRollsForward() throws {
         let context = container.mainContext

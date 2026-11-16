@@ -196,7 +196,7 @@ struct DocumentReaderTests {
 }
 
 struct DocumentImportTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func report() -> DraftAttachment {
         var file = DraftAttachment(kind: .document, newData: Data("%PDF".utf8), fileName: "体检报告.pdf", contentType: UTType.pdf.identifier)

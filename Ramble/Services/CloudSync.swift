@@ -131,6 +131,12 @@ enum SyncDeduper {
         defaults.set(true, forKey: recordedKey)
     }
 
+    /// A new library's seeds are this device's own again.
+    static func forgetOwnSeeds(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: ownedKey)
+        defaults.removeObject(forKey: recordedKey)
+    }
+
     @discardableResult
     static func run(in context: ModelContext, defaults: UserDefaults = .standard) -> Int {
         let owned = Set(defaults.stringArray(forKey: ownedKey) ?? [])
@@ -138,6 +144,7 @@ enum SyncDeduper {
         removed += mergeCategories(context, owned: owned)
         removed += mergeAccounts(context, owned: owned)
         removed += mergeBudgets(context)
+        removed += mergeOccurrences(context)
         if removed > 0 { try? context.save() }
         return removed
     }
@@ -165,6 +172,7 @@ enum SyncDeduper {
                 for budget in duplicate.budgets ?? [] { budget.category = keeper }
                 for bill in duplicate.bills ?? [] { bill.category = keeper }
                 for item in duplicate.outstandings ?? [] { item.category = keeper }
+                for rule in duplicate.recurringEntries ?? [] { rule.category = keeper }
                 for child in duplicate.children ?? [] { child.parent = keeper }
                 context.delete(duplicate)
                 removed += 1
@@ -185,11 +193,30 @@ enum SyncDeduper {
                 for bill in duplicate.bills ?? [] { bill.account = keeper }
                 for bill in duplicate.repaymentBills ?? [] { bill.creditAccount = keeper }
                 for item in duplicate.outstandings ?? [] { item.account = keeper }
+                for rule in duplicate.recurringEntries ?? [] { rule.account = keeper }
                 // A balance or card details set on this copy aren't lost.
                 if keeper.initialBalance == 0 { keeper.initialBalance = duplicate.initialBalance }
                 if keeper.creditLimit == nil { keeper.creditLimit = duplicate.creditLimit }
                 if keeper.statementDay == nil { keeper.statementDay = duplicate.statementDay }
                 if keeper.paymentDueDay == nil { keeper.paymentDueDay = duplicate.paymentDueDay }
+                context.delete(duplicate)
+                removed += 1
+            }
+        }
+        return removed
+    }
+
+    /// Two devices that reached the same occurrence of a 定期记账 before hearing from each other
+    /// each recorded it. Every device keeps the oldest copy, by a date that syncs, so they agree.
+    private static func mergeOccurrences(_ context: ModelContext) -> Int {
+        let all = (try? context.fetch(FetchDescriptor<LedgerEntry>(predicate: #Predicate { $0.occurrenceDate != nil }))) ?? []
+        let copies = Dictionary(grouping: all.filter { $0.recurring != nil }) { entry -> String in
+            "\(key(for: entry.recurring!))|\(Calendar.current.startOfDay(for: entry.occurrenceDate!).timeIntervalSince1970)"
+        }
+        var removed = 0
+        for (_, list) in copies where list.count > 1 {
+            let ordered = list.sorted { ($0.createdAt, key(for: $0)) < ($1.createdAt, key(for: $1)) }
+            for duplicate in ordered.dropFirst() {
                 context.delete(duplicate)
                 removed += 1
             }

@@ -37,6 +37,9 @@ struct CaptureSheet: View {
     @Query(filter: #Predicate<ExpiryItem> { !$0.isArchived }) private var expiries: [ExpiryItem]
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }) private var openTasks: [TaskItem]
+    @Query(filter: #Predicate<Project> { !$0.isFinished }, sort: \Project.createdAt, order: .reverse) private var projects: [Project]
+    /// Spending a refund in the capture may be for, looked up when it's read.
+    @State private var recentExpenses: [LedgerEntry] = []
 
     @State private var recorder = SpeechRecorder()
     @State private var micTarget: MicTarget = .note
@@ -103,7 +106,7 @@ struct CaptureSheet: View {
             .attachmentPreview($preview)
             .navigationDestination(item: $editingDraft) { id in
                 if let index = drafts.firstIndex(where: { $0.id == id }) {
-                    DraftEditorView(draft: $drafts[index], categories: categories, accounts: accounts, notes: notes)
+                    DraftEditorView(draft: $drafts[index], categories: categories, accounts: accounts, notes: notes, projects: projects, expenses: recentExpenses)
                 }
             }
             .navigationDestination(isPresented: $showsAISettings) {
@@ -287,7 +290,7 @@ struct CaptureSheet: View {
             HStack(spacing: AttachmentTile.removeOutset) {
                 ForEach(files) { file in
                     Button {
-                        preview = PreviewFile(draft: file, among: files)
+                        preview = .forDraft(file, in: $files)
                     } label: {
                         AttachmentTile(kind: file.kind, thumbnail: file.thumbnail, fileName: file.fileName, size: 64)
                     }
@@ -534,12 +537,14 @@ struct CaptureSheet: View {
             fillers = outcome.capture.fillerPhrases
             followUp = outcome.capture.followUpQuestion.trimmed
             source = outcome.source
+            recentExpenses = RefundCues.candidates(in: context)
             drafts = outcome.capture.items.map { item in
                 var draft = CaptureDraft(item: item, categories: categories, accounts: accounts, baseCurrency: baseCurrency)
-                draft.linkExisting(bills: bills, expiries: expiries, notes: notes, tasks: openTasks)
+                draft.linkExisting(bills: bills, expiries: expiries, notes: notes, tasks: openTasks, projects: projects, expenses: recentExpenses)
                 if draft.kind == .note, commands.markAsKeyPoint { draft.isKeyPoint = true }
                 return draft
             }
+            CaptureDraft.linkProject(in: &drafts, said: commands.text, among: projects)
             answer = ""
             phase = .review
             if outcome.source == .onDevice { tidyNotes() }
@@ -798,6 +803,13 @@ struct DraftCard: View {
             rows.append(Row(label: "分类", value: draft.category?.name ?? String(localized: "未分类"), uncertain: isUnsure("category")))
             rows.append(Row(label: "账户", value: draft.account?.name ?? String(localized: "未指定"), uncertain: isUnsure("account")))
             rows.append(Row(label: "时间", value: dateText(hasTime: draft.hasTime), uncertain: isUnsure("date")))
+            if let project = draft.project {
+                rows.append(Row(label: "项目", value: project.name))
+            }
+        case .refund:
+            rows.append(Row(label: "退的是", value: draft.refundTarget.map { "\($0.displayTitle) · \(DayText.dayWithWeekday($0.date))" }
+                            ?? String(localized: "未选择"), uncertain: draft.refundTarget == nil))
+            rows.append(Row(label: "退款日期", value: draft.date.map(DayText.dayWithWeekday) ?? String(localized: "未填")))
         case .transfer:
             rows.append(Row(label: "账户", value: "\(draft.account?.name ?? "?") → \(draft.toAccount?.name ?? "?")", uncertain: isUnsure("account")))
             rows.append(Row(label: "时间", value: dateText(hasTime: draft.hasTime), uncertain: isUnsure("date")))

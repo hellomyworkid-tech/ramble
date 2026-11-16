@@ -17,6 +17,9 @@ struct TodayView: View {
     @State private var showSettings = false
     @State private var showsOutstanding = false
     @Query private var outstandings: [Outstanding]
+    /// 定期记账 that asks first; those whose day has come show here.
+    @Query(filter: #Predicate<RecurringEntry> { $0.isActive && $0.asksFirst }, sort: \RecurringEntry.nextDate) private var waitingRules: [RecurringEntry]
+    @State private var confirmingRule: RecurringEntry?
 
     init(selection: Binding<AppTab>) {
         _selection = selection
@@ -50,6 +53,17 @@ struct TodayView: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 10, trailing: 0))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+
+                let dueRules = waitingRules.filter { $0.isDue() }
+                if !dueRules.isEmpty {
+                    Section("到日子了") {
+                        ForEach(dueRules) { rule in
+                            RecurringRow(rule: rule)
+                                .contentShape(.rect)
+                                .onTapGesture { confirmingRule = rule }
+                        }
+                    }
+                }
 
                 Section {
                     if todayTasks.isEmpty {
@@ -89,6 +103,10 @@ struct TodayView: View {
             }
             .sheet(isPresented: $showSettings) {
                 NavigationStack { SettingsView() }
+            }
+            .sheet(item: $confirmingRule) { rule in
+                NavigationStack { RecurringConfirmView(rule: rule) }
+                    .presentationDetents([.medium, .large])
             }
             .navigationDestination(isPresented: $showsOutstanding) {
                 OutstandingListView()

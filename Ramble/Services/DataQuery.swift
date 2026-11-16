@@ -563,11 +563,20 @@ enum QueryRunner {
         }
         guard !plan.keywords.isEmpty else { return all.filter(inCategory) }
         let byKeyword = all.filter { entry in
-            plan.keywords.contains { entry.note.localizedCaseInsensitiveContains($0) || (entry.category?.name.contains($0) ?? false) }
+            plan.keywords.contains { keyword in
+                entry.note.localizedCaseInsensitiveContains(keyword) || (entry.category?.name.contains(keyword) ?? false)
+                    || (entry.project?.name.localizedCaseInsensitiveContains(keyword) ?? false)
+            }
         }
         // "打车" matched no note: fall back to the category it belongs to. A word with no category
         // has nothing to fall back on, and everything spent isn't what it cost.
         return byKeyword.isEmpty && !categories.isEmpty ? all.filter(inCategory) : byKeyword
+    }
+
+    private static func namesProject(_ plan: QueryPlan, context: ModelContext) -> Bool {
+        guard !plan.keywords.isEmpty else { return false }
+        let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
+        return plan.keywords.contains { keyword in projects.contains { $0.name.localizedCaseInsensitiveContains(keyword) } }
     }
 
     private static func subjectWord(_ plan: QueryPlan, kind: EntryKind) -> String {
@@ -579,7 +588,9 @@ enum QueryRunner {
 
     private static func money(_ plan: QueryPlan, context: ModelContext, now: Date) -> AskAnswer {
         let kind: EntryKind = plan.subject == .income ? .income : .expense
-        let period = plan.period ?? PeriodResolver.month(containing: now, now: now, label: String(localized: "本月"))
+        // 「装修花了多少」 means the whole project, not this month's share of it.
+        let period = plan.period ?? (namesProject(plan, context: context) ? PeriodResolver.allTime(now: now)
+                                                                          : PeriodResolver.month(containing: now, now: now, label: String(localized: "本月")))
         let list = entries(plan, kind: kind, period: period, context: context)
         let total = list.reduce(Decimal(0)) { $0 + $1.baseAmount }
         let what = subjectWord(plan, kind: kind)
@@ -629,7 +640,7 @@ enum QueryRunner {
             } else if let comparison {
                 answer.details.append(comparison)
             }
-            if period.unit != .day { answer.details.append(String(localized: "日均 \(money(total / Decimal(days)))")) }
+            if period.unit != .day, period.unit != .all { answer.details.append(String(localized: "日均 \(money(total / Decimal(days)))")) }
             // The overall budget, for this month's spending.
             if kind == .expense, period.unit == .month, period.holds(now),
                let budget = LedgerSummary.monthlyBudget(categoryName: plan.categories.first, context: context), budget > 0,

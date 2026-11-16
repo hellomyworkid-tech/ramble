@@ -32,7 +32,7 @@ struct OutstandingCueTests {
 
 @MainActor
 struct OutstandingTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func seeded() -> (ModelContext, [LedgerCategory], [Account]) {
         let context = container.mainContext
@@ -160,7 +160,7 @@ struct OutstandingTests {
         try context.save()
 
         let data = try Backup.encoder().encode(try Backup.make(from: context))
-        let target = AppSchema.makeContainer(inMemory: true)
+        let target = AppSchema.inMemoryContainer()
         try Backup.restore(try Backup.read(data), into: target.mainContext)
         let restored = try #require(try target.mainContext.fetch(FetchDescriptor<Outstanding>()).first)
         #expect(restored.counterparty == "张三" && restored.dueDate != nil && restored.category?.seedKey == "other-income")

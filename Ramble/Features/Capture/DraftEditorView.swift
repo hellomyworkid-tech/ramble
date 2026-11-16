@@ -6,6 +6,9 @@ struct DraftEditorView: View {
     let categories: [LedgerCategory]
     let accounts: [Account]
     var notes: [Note] = []
+    var projects: [Project] = []
+    /// Spending a refund may be for, newest first.
+    var expenses: [LedgerEntry] = []
 
     @FocusState private var amountFocused: Bool
 
@@ -34,6 +37,20 @@ struct DraftEditorView: View {
                     categoryPicker
                     accountPicker("账户", selection: $draft.account)
                     DatePicker("时间", selection: dateBinding)
+                    ProjectField(selection: $draft.project, projects: projects)
+                }
+            case .refund:
+                Section {
+                    Picker("退的是哪一笔", selection: $draft.refundTarget) {
+                        Text("未选择").tag(LedgerEntry?.none)
+                        ForEach(refundChoices) { entry in
+                            Text("\(entry.displayTitle) · \(entry.netAmount.money(entry.currencyCode)) · \(DayText.dayWithWeekday(entry.date))").tag(Optional(entry))
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    DatePicker("退款日期", selection: dateBinding, displayedComponents: .date)
+                } footer: {
+                    Text("从这笔支出里扣掉，不算收入。不是退款的话，把上面的类型改成「收入」。")
                 }
             case .transfer:
                 Section {
@@ -129,7 +146,7 @@ struct DraftEditorView: View {
                 }
             }
 
-            if draft.kind != .note {
+            if draft.kind != .note, draft.kind != .refund {
                 Section {
                     TextField("备注", text: $draft.note, axis: .vertical)
                 }
@@ -144,12 +161,18 @@ struct DraftEditorView: View {
         }
         .onChange(of: draft.category) { draft.uncertain.remove("category") }
         .onChange(of: draft.account) { draft.uncertain.remove("account") }
+        .onChange(of: draft.refundTarget) { _, target in
+            if let target { draft.currencyCode = target.currencyCode }
+        }
         .onChange(of: draft.dateIsApproximate) { _, approximate in
             if !approximate { draft.uncertain.remove("date") }
         }
         .onChange(of: draft.kind) { _, kind in
             let wanted: CategoryKind = kind == .income || kind == .receivable ? .income : .expense
             if draft.category?.kind != wanted { draft.category = nil }
+            if kind == .refund, draft.refundTarget == nil {
+                draft.refundTarget = RefundCues.original(of: draft.title, amount: draft.amount, among: expenses)
+            }
             // Records with money or a due date need a date; owed money only when it's known.
             if ![.task, .note, .receivable, .payable].contains(kind), draft.date == nil {
                 draft.date = Calendar.current.startOfDay(for: .now)
@@ -157,12 +180,16 @@ struct DraftEditorView: View {
         }
     }
 
+    /// The recent ones, and whichever is picked even if it's older than those.
+    private var refundChoices: [LedgerEntry] {
+        let recent = Array(expenses.prefix(40))
+        guard let target = draft.refundTarget, !recent.contains(target) else { return recent }
+        return [target] + recent
+    }
+
     private var categoryPicker: some View {
         let wanted: CategoryKind = draft.kind == .income || draft.kind == .receivable ? .income : .expense
-        return Picker("分类", selection: $draft.category) {
-            Text("未分类").tag(LedgerCategory?.none)
-            ForEach(categories.filter { $0.kind == wanted }) { Text($0.name).tag(Optional($0)) }
-        }
+        return CategoryField(title: "分类", kind: wanted, categories: categories.filter { $0.kind == wanted }, selection: $draft.category)
     }
 
     private func accountPicker(_ title: LocalizedStringResource, selection: Binding<Account?>, kinds: [AccountKind]? = nil) -> some View {

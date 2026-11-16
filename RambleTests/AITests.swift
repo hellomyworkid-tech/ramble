@@ -153,7 +153,7 @@ struct CloudConsentTests {
 }
 
 struct CaptureDraftTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func seeded() -> (ModelContext, [LedgerCategory], [Account]) {
         let context = container.mainContext

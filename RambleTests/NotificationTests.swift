@@ -88,7 +88,7 @@ struct ReminderPlannerTests {
 }
 
 struct NotificationActionTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func modelReferencesSurviveARoundTripAndDeletion() throws {
         let context = container.mainContext

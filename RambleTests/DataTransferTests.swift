@@ -7,7 +7,7 @@ import Testing
 struct BackupTests {
     /// A small library touching every model and relationship.
     private func makeLibrary() throws -> ModelContainer {
-        let container = AppSchema.makeContainer(inMemory: true)
+        let container = AppSchema.inMemoryContainer()
         let context = container.mainContext
         let card = Account(name: "招行信用卡", kind: .creditCard)
         card.creditLimit = 30_000
@@ -77,7 +77,7 @@ struct BackupTests {
         let read = try Backup.read(data)
         #expect(read.summary.contains("2 条账目"))
 
-        let target = AppSchema.makeContainer(inMemory: true)
+        let target = AppSchema.inMemoryContainer()
         let context = target.mainContext
         // Whatever was there before is replaced.
         context.insert(TaskItem(title: "会被替换"))
@@ -149,7 +149,7 @@ struct BackupTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: attachments.path).sorted() == written)
         #expect(try FileManager.default.attributesOfItem(atPath: attachments.appending(path: written[0]).path)[.modificationDate] as? Date == modified)
 
-        let target = AppSchema.makeContainer(inMemory: true)
+        let target = AppSchema.inMemoryContainer()
         let result = try Backup.restore(file, into: target.mainContext, attachmentsFrom: BackupFolderSource(folder: folder))
         #expect(result.missingAttachments == 0)
         let restored = try target.mainContext.fetch(FetchDescriptor<Ramble.Attachment>())
@@ -165,7 +165,7 @@ struct BackupTests {
         let opened = try Backup.open(zip)
         #expect(opened.file.summary.contains("2 条账目"))
 
-        let target = AppSchema.makeContainer(inMemory: true)
+        let target = AppSchema.inMemoryContainer()
         let result = try Backup.restore(opened.file, into: target.mainContext, attachmentsFrom: opened.source)
         #expect(result.missingAttachments == 0 && result.attachmentError == nil)
         let restored = try target.mainContext.fetch(FetchDescriptor<Ramble.Attachment>())
@@ -206,7 +206,7 @@ struct BackupTests {
 @MainActor
 struct LedgerCSVTests {
     @Test func exportIsExcelFriendly() throws {
-        let container = AppSchema.makeContainer(inMemory: true)
+        let container = AppSchema.inMemoryContainer()
         let context = container.mainContext
         let food = LedgerCategory(name: "餐饮", kind: .expense, symbol: "fork.knife", colorHex: "#FF9500")
         let coffee = LedgerCategory(name: "咖啡", kind: .expense, symbol: "cup.and.saucer", colorHex: "#A2845E")
@@ -223,7 +223,7 @@ struct LedgerCSVTests {
         let text = try #require(LedgerCSV.decode(data))
         let rows = LedgerCSV.rows(text)
         #expect(rows[0] == LedgerCSV.exportHeader)
-        #expect(rows[1] == ["2026-10-12 08:30", "支出", "28", "CNY", "餐饮", "咖啡", "", "", "拿铁, \"大杯\"", "手动"])
+        #expect(rows[1] == ["2026-10-12 08:30", "支出", "28", "CNY", "餐饮", "咖啡", "", "", "拿铁, \"大杯\"", "手动", "", ""])
     }
 
     @Test func quotedFieldsKeepCommasAndLineBreaks() {
@@ -304,7 +304,7 @@ struct LedgerCSVTests {
     }
 
     @Test func importMatchesCategoriesAndSkipsWhatsAlreadyThere() throws {
-        let container = AppSchema.makeContainer(inMemory: true)
+        let container = AppSchema.inMemoryContainer()
         let context = container.mainContext
         let food = LedgerCategory(name: "餐饮", kind: .expense, symbol: "fork.knife", colorHex: "#FF9500", seedKey: "food")
         let breakfast = LedgerCategory(name: "早餐", kind: .expense, symbol: "sun.max", colorHex: "#FF9500")

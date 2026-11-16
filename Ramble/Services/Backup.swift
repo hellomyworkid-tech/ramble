@@ -26,6 +26,9 @@ nonisolated struct BackupFile: Codable {
     var notes: [NoteRecord] = []
     var noteEntries: [NoteEntryRecord] = []
     var attachments: [AttachmentRecord] = []
+    /// Absent from backups made before 项目 and 定期记账 existed.
+    var projects: [ProjectRecord]?
+    var recurringEntries: [RecurringRecord]?
 
     struct AccountRecord: Codable {
         var id: String, name: String, kind: String, currencyCode: String, initialBalance: Decimal
@@ -43,6 +46,16 @@ nonisolated struct BackupFile: Codable {
         var date: Date, note: String, source: String, createdAt: Date
         var account: String?, toAccount: String?, category: String?, bill: String?
         var outstanding: String?
+        var refundedAmount: Decimal?, refundedAt: Date?, project: String?, recurring: String?, occurrenceDate: Date?
+    }
+
+    struct ProjectRecord: Codable {
+        var id: String, name: String, isFinished: Bool, createdAt: Date
+    }
+
+    struct RecurringRecord: Codable {
+        var id: String, kind: String, name: String, amount: Decimal, currencyCode: String, nextDate: Date
+        var recurrence: Data?, asksFirst: Bool, isActive: Bool, createdAt: Date, account: String?, category: String?
     }
 
     struct BudgetRecord: Codable {
@@ -78,6 +91,7 @@ nonisolated struct BackupFile: Codable {
 
     struct NoteRecord: Codable {
         var id: String, title: String, isPinned: Bool, createdAt: Date, updatedAt: Date
+        var project: String?
     }
 
     struct NoteEntryRecord: Codable {
@@ -101,6 +115,8 @@ nonisolated struct BackupFile: Codable {
         if !notes.isEmpty { parts.append(String(localized: "\(notes.count) 本笔记")) }
         if !bills.isEmpty { parts.append(String(localized: "\(bills.count) 个账单")) }
         if let outstandings, !outstandings.isEmpty { parts.append(String(localized: "\(outstandings.count) 笔应收应付")) }
+        if let projects, !projects.isEmpty { parts.append(String(localized: "\(projects.count) 个项目")) }
+        if let recurringEntries, !recurringEntries.isEmpty { parts.append(String(localized: "\(recurringEntries.count) 条定期记账")) }
         if !expiries.isEmpty { parts.append(String(localized: "\(expiries.count) 个到期提醒")) }
         if !attachments.isEmpty { parts.append(String(localized: "\(attachments.count) 个附件")) }
         return parts.isEmpty ? String(localized: "没有记录") : parts.joined(separator: "、")
@@ -223,10 +239,20 @@ enum Backup {
                   currencyCode: $0.currencyCode, dueDate: $0.dueDate, note: $0.note, createdAt: $0.createdAt,
                   account: id($0.account), category: id($0.category))
         }
+        file.projects = try all(Project.self).map {
+            .init(id: id($0)!, name: $0.name, isFinished: $0.isFinished, createdAt: $0.createdAt)
+        }
+        file.recurringEntries = try all(RecurringEntry.self).map {
+            .init(id: id($0)!, kind: $0.kindRaw, name: $0.name, amount: $0.amount, currencyCode: $0.currencyCode, nextDate: $0.nextDate,
+                  recurrence: $0.recurrenceData, asksFirst: $0.asksFirst, isActive: $0.isActive, createdAt: $0.createdAt,
+                  account: id($0.account), category: id($0.category))
+        }
         file.entries = try all(LedgerEntry.self).map {
             .init(id: id($0)!, kind: $0.kindRaw, amount: $0.amount, currencyCode: $0.currencyCode, rateToBase: $0.rateToBase,
                   date: $0.date, note: $0.note, source: $0.sourceRaw, createdAt: $0.createdAt, account: id($0.account),
-                  toAccount: id($0.toAccount), category: id($0.category), bill: id($0.bill), outstanding: id($0.outstanding))
+                  toAccount: id($0.toAccount), category: id($0.category), bill: id($0.bill), outstanding: id($0.outstanding),
+                  refundedAmount: $0.refundedAmount, refundedAt: $0.refundedAt, project: id($0.project), recurring: id($0.recurring),
+                  occurrenceDate: $0.occurrenceDate)
         }
         file.budgets = try all(Budget.self).map { .init(amount: $0.amount, createdAt: $0.createdAt, category: id($0.category)) }
         file.expiries = try all(ExpiryItem.self).map {
@@ -235,7 +261,8 @@ enum Backup {
                   isArchived: $0.isArchived, createdAt: $0.createdAt)
         }
         file.notes = try all(Note.self).map {
-            .init(id: id($0)!, title: $0.title, isPinned: $0.isPinned, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            .init(id: id($0)!, title: $0.title, isPinned: $0.isPinned, createdAt: $0.createdAt, updatedAt: $0.updatedAt,
+                  project: id($0.project))
         }
         file.noteEntries = try all(NoteEntry.self).map {
             .init(id: id($0)!, note: id($0.note), text: $0.text, date: $0.date, createdAt: $0.createdAt, editedAt: $0.editedAt,
@@ -439,6 +466,31 @@ enum Backup {
                 outstandings[record.id] = item
             }
 
+            var projects: [String: Project] = [:]
+            for record in file.projects ?? [] {
+                let project = Project(name: record.name)
+                project.isFinished = record.isFinished
+                project.createdAt = record.createdAt
+                context.insert(project)
+                projects[record.id] = project
+            }
+
+            var recurring: [String: RecurringEntry] = [:]
+            for record in file.recurringEntries ?? [] {
+                let rule = RecurringEntry(kind: EntryKind(rawValue: record.kind) ?? .expense, name: record.name, amount: record.amount,
+                                          currencyCode: record.currencyCode, nextDate: record.nextDate, recurrence: nil)
+                rule.kindRaw = record.kind
+                rule.nextDate = record.nextDate
+                rule.recurrenceData = record.recurrence
+                rule.asksFirst = record.asksFirst
+                rule.isActive = record.isActive
+                rule.createdAt = record.createdAt
+                context.insert(rule)
+                rule.account = record.account.flatMap { accounts[$0] }
+                rule.category = record.category.flatMap { categories[$0] }
+                recurring[record.id] = rule
+            }
+
             for record in file.entries {
                 let entry = LedgerEntry(kind: EntryKind(rawValue: record.kind) ?? .expense, amount: record.amount,
                                         currencyCode: record.currencyCode, date: record.date, note: record.note,
@@ -453,6 +505,11 @@ enum Backup {
                 entry.category = record.category.flatMap { categories[$0] }
                 entry.bill = record.bill.flatMap { bills[$0] }
                 entry.outstanding = record.outstanding.flatMap { outstandings[$0] }
+                entry.refundedAmount = record.refundedAmount ?? 0
+                entry.refundedAt = record.refundedAt
+                entry.project = record.project.flatMap { projects[$0] }
+                entry.recurring = record.recurring.flatMap { recurring[$0] }
+                entry.occurrenceDate = record.occurrenceDate
                 entries[record.id] = entry
             }
 
@@ -483,6 +540,7 @@ enum Backup {
                 note.createdAt = record.createdAt
                 note.updatedAt = record.updatedAt
                 context.insert(note)
+                note.project = record.project.flatMap { projects[$0] }
                 notes[record.id] = note
             }
 
@@ -574,6 +632,8 @@ enum Backup {
         func remove<T: PersistentModel>(_ type: T.Type) throws {
             for model in try context.fetch(FetchDescriptor<T>()) { context.delete(model) }
         }
+        try remove(RecurringEntry.self)
+        try remove(Project.self)
         try remove(Attachment.self)
         try remove(Subtask.self)
         try remove(TaskItem.self)

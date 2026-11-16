@@ -20,7 +20,7 @@ struct CloudKitSchemaTests {
 
 @MainActor
 struct SyncDeduperTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func defaults() -> UserDefaults {
         UserDefaults(suiteName: "sync-\(UUID().uuidString)")!

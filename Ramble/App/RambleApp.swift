@@ -4,11 +4,56 @@ import SwiftUI
 @main
 struct RambleApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    let container: ModelContainer
 
     init() {
+        let library = LibraryState.shared
+        if library.failure == nil { AppStartup.run(library.container) }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            LibraryGate()
+                .refreshesOrientationOnResize()
+        }
+        .backgroundTask(.appRefresh(NotificationScheduler.refreshTaskID)) {
+            guard await LibraryState.shared.failure == nil else { return }
+            // Also brings widget completions in and rolls the widgets' "today" over.
+            await MainActor.run {
+                let context = AppSchema.shared.mainContext
+                RecurringEntries.recordDue(in: context)
+                WidgetBridge.applyPendingCompletions(context: context)
+                WidgetBridge.refresh(context: context)
+            }
+            await NotificationScheduler.shared.reschedule()
+            await NotificationScheduler.scheduleBackgroundRefresh()
+        }
+        // iOS wakes the app when background model downloads finish, so files can be put in place.
+        .backgroundTask(.urlSession(BackgroundDownloads.identifier)) {
+            await BackgroundDownloads.shared.handleBackgroundEvents()
+        }
+    }
+}
+
+/// The app, or the recovery page while the library won't open.
+private struct LibraryGate: View {
+    @State private var library = LibraryState.shared
+
+    var body: some View {
+        Group {
+            if let failure = library.failure {
+                LibraryRecoveryView(failure: failure)
+            } else {
+                RootView()
+            }
+        }
+        .modelContainer(library.container)
+    }
+}
+
+/// What the app does once its library is open: at launch, or after the recovery page.
+enum AppStartup {
+    static func run(_ container: ModelContainer) {
         let arguments = ProcessInfo.processInfo.arguments
-        container = AppSchema.shared
         let isNewLibrary = ((try? container.mainContext.fetchCount(FetchDescriptor<LedgerCategory>())) ?? 0) == 0
         AppSettings.storeBaseCurrencyIfNeeded(isNewLibrary: isNewLibrary)
         SeedData.seedDefaultsIfNeeded(container.mainContext)
@@ -40,6 +85,13 @@ struct RambleApp: App {
             for number in 1...30 {
                 note.append("第 \(number) 条记录\n写得长一点，这样每一条都占一些地方。", date: .now.addingTimeInterval(Double(number - 40) * 3600), in: container.mainContext)
             }
+            try? container.mainContext.save()
+        }
+        // `-testDueRecurring`: a 定期记账 that asks first, and whose day has come.
+        if arguments.contains("-testDueRecurring") {
+            let rule = RecurringEntry(kind: .expense, name: "物业费", amount: 300, nextDate: .now, recurrence: .monthly().normalized(anchor: .now))
+            rule.asksFirst = true
+            container.mainContext.insert(rule)
             try? container.mainContext.save()
         }
         if arguments.contains("-openAsk") { AppRouter.shared.ask(nil) }
@@ -88,27 +140,5 @@ struct RambleApp: App {
         }
         // Reconnect to model downloads that kept running while the app was closed.
         BackgroundDownloads.shared.resume()
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-                .refreshesOrientationOnResize()
-        }
-        .modelContainer(container)
-        .backgroundTask(.appRefresh(NotificationScheduler.refreshTaskID)) {
-            // Also brings widget completions in and rolls the widgets' "today" over.
-            await MainActor.run {
-                let context = AppSchema.shared.mainContext
-                WidgetBridge.applyPendingCompletions(context: context)
-                WidgetBridge.refresh(context: context)
-            }
-            await NotificationScheduler.shared.reschedule()
-            await NotificationScheduler.scheduleBackgroundRefresh()
-        }
-        // iOS wakes the app when background model downloads finish, so files can be put in place.
-        .backgroundTask(.urlSession(BackgroundDownloads.identifier)) {
-            await BackgroundDownloads.shared.handleBackgroundEvents()
-        }
     }
 }

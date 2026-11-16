@@ -10,7 +10,7 @@ enum LedgerCSV {
     static var exportHeader: [String] {
         [String(localized: "日期"), String(localized: "类型"), String(localized: "金额"), String(localized: "币种"),
          String(localized: "分类"), String(localized: "子分类"), String(localized: "账户"), String(localized: "转入账户"),
-         String(localized: "备注"), String(localized: "来源")]
+         String(localized: "备注"), String(localized: "来源"), String(localized: "已退款"), String(localized: "项目")]
     }
 
     /// UTF-8 with a byte-order mark, so Excel and Numbers show the Chinese properly.
@@ -33,6 +33,8 @@ enum LedgerCSV {
                 entry.toAccount?.name ?? "",
                 entry.note,
                 sourceTitle(entry.sourceRaw),
+                entry.refundedAmount > 0 ? "\(entry.refundedAmount)" : "",
+                entry.project?.name ?? "",
             ])
         }
         let text = rows.map { $0.map(escape).joined(separator: ",") }.joined(separator: "\r\n") + "\r\n"
@@ -45,6 +47,7 @@ enum LedgerCSV {
         case .bill: String(localized: "账单")
         case .imported: String(localized: "导入")
         case .outstanding: String(localized: "应收应付")
+        case .recurring: String(localized: "定期记账")
         default: String(localized: "手动")
         }
     }

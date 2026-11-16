@@ -46,6 +46,8 @@ nonisolated enum EntrySource: String, Codable {
     case imported
     /// Recorded when money owed was received or paid (应收应付).
     case outstanding
+    /// Recorded by itself when its day came round (定期记账).
+    case recurring
 }
 
 nonisolated enum CategoryKind: String, CaseIterable, Identifiable, Codable {

@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 @testable import Ramble
 
 struct NoteModelTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func entriesKeepTimeOrderAndBumpTheNote() throws {
         let context = container.mainContext
@@ -98,7 +98,7 @@ struct NoteModelTests {
 }
 
 struct NoteCaptureTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     /// "装修那边师傅说下周三能铺砖，今天买瓷砖花了三千二": a note entry, a reminder linked to its sentence, an expense.
     @Test func captureAppendsToTheNoteAndLinksTheReminder() throws {
@@ -223,7 +223,7 @@ struct NoteOrganizerTests {
     }
 
     @Test func remindersTheNoteAlreadyHasAreDropped() throws {
-        let container = AppSchema.makeContainer(inMemory: true)
+        let container = AppSchema.inMemoryContainer()
         let context = container.mainContext
         let note = Note(title: "装修记录")
         context.insert(note)
@@ -254,7 +254,7 @@ struct NoteOrganizerTests {
 }
 
 struct DocumentAttachmentTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func documentsSyncWithTheirFileDetails() throws {
         let context = container.mainContext

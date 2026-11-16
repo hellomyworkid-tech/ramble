@@ -3,6 +3,9 @@ import SwiftUI
 
 enum DraftKind: String, CaseIterable, Identifiable {
     case task, expense, income, transfer, bill, expiry, note, receivable, payable
+    /// Money back for something already recorded. The app works this out from the words (`RefundCues`);
+    /// no model is asked for it.
+    case refund
 
     var id: String { rawValue }
 
@@ -17,6 +20,7 @@ enum DraftKind: String, CaseIterable, Identifiable {
         case .note: LocalizedStringResource("kind.note", defaultValue: "笔记")
         case .receivable: "应收"
         case .payable: "应付"
+        case .refund: "退款"
         }
     }
 
@@ -31,20 +35,21 @@ enum DraftKind: String, CaseIterable, Identifiable {
         case .note: "note.text"
         case .receivable: "arrow.down.left.circle"
         case .payable: "arrow.up.right.circle"
+        case .refund: "arrow.uturn.backward.circle"
         }
     }
 
     var color: Color {
         switch self {
         case .task: ModuleColor.tasks
-        case .expense, .income, .transfer, .receivable, .payable: ModuleColor.money
+        case .expense, .income, .transfer, .receivable, .payable, .refund: ModuleColor.money
         case .bill: ModuleColor.bills
         case .expiry: ModuleColor.expiry
         case .note: ModuleColor.notes
         }
     }
 
-    var hasAmount: Bool { [.expense, .income, .transfer, .bill, .receivable, .payable].contains(self) }
+    var hasAmount: Bool { [.expense, .income, .transfer, .bill, .receivable, .payable, .refund].contains(self) }
 
     var outstandingDirection: OutstandingDirection? {
         switch self {
@@ -129,14 +134,26 @@ struct CaptureDraft: Identifiable {
     var isKeyPoint = false
     /// 应收应付: who owes or is owed.
     var counterparty = ""
+    /// For spending and income: the project it goes to.
+    var project: Project?
+    /// What was said, to find that project in.
+    var spokenWords = ""
+    /// For refunds: the expense the money came back for.
+    var refundTarget: LedgerEntry?
 
     var existingName: String? {
         existingBill?.name ?? existingExpiry?.name ?? existingNote?.displayTitle ?? existingTask?.title
     }
 
     /// Links bills, expiry items, notes and to-dos to records that already exist.
-    mutating func linkExisting(bills: [Bill], expiries: [ExpiryItem], notes: [Note] = [], tasks: [TaskItem] = []) {
+    mutating func linkExisting(bills: [Bill], expiries: [ExpiryItem], notes: [Note] = [], tasks: [TaskItem] = [],
+                               projects: [Project] = [], expenses: [LedgerEntry] = []) {
         switch kind {
+        case .expense, .income:
+            project = Project.named(in: spokenWords, among: projects)
+        case .refund:
+            refundTarget = RefundCues.original(of: title, amount: amount, among: expenses)
+            if let refundTarget { currencyCode = refundTarget.currencyCode }
         case .task:
             guard let date else { break }
             let sameDay = tasks.filter { task in
@@ -159,6 +176,14 @@ struct CaptureDraft: Identifiable {
         }
     }
 
+    /// With one lot of money in what was said, the whole of it says what it's for: a model often
+    /// leaves 「装修」 out of the expense in 「装修那边今天买瓷砖花了 3200」.
+    static func linkProject(in drafts: inout [CaptureDraft], said: String, among projects: [Project]) {
+        let money = drafts.indices.filter { [.expense, .income].contains(drafts[$0].kind) }
+        guard money.count == 1, drafts[money[0]].project == nil else { return }
+        drafts[money[0]].project = Project.named(in: said, among: projects)
+    }
+
     var amount: Decimal? {
         guard let value = Decimal(userInput: amountText), value > 0 else { return nil }
         return value
@@ -177,6 +202,7 @@ struct CaptureDraft: Identifiable {
         if kind.hasAmount, amount == nil { return String(localized: "缺少金额") }
         if [.bill, .expiry].contains(kind), date == nil { return String(localized: "缺少日期") }
         if kind == .transfer, account == nil || toAccount == nil { return String(localized: "缺少转出或转入账户") }
+        if kind == .refund, refundTarget == nil { return String(localized: "选一笔要退款的支出") }
         return nil
     }
 
@@ -192,11 +218,16 @@ extension CaptureDraft {
         if kind == .expense || kind == .income, let direction = OutstandingCues.direction(in: said) {
             kind = direction == .receivable ? .receivable : .payable
         }
+        // Money back for something bought, which isn't income: 「运动鞋退款 268」.
+        if kind == .expense || kind == .income, RefundCues.isRefund(said) {
+            kind = .refund
+        }
         if let direction = kind.outstandingDirection {
             counterparty = item.counterparty.trimmed.isEmpty
                 ? OutstandingCues.counterparty(in: said, direction: direction) : item.counterparty.trimmed
         }
         title = item.title.trimmed
+        spokenWords = [item.category, item.title, item.note, item.quote].joined(separator: " ")
         amountText = Decimal(userInput: item.amount)?.inputText ?? ""
         amountIsApproximate = item.amountIsApproximate
         currencyCode = item.currency.count == 3 ? item.currency.uppercased() : baseCurrency
@@ -240,7 +271,7 @@ extension CaptureDraft {
         dateIsApproximate = item.dateIsApproximate
         if dateIsApproximate { uncertain.insert("date") }
         switch kind {
-        case .expense, .income, .transfer:
+        case .expense, .income, .transfer, .refund:
             if date == nil { date = now; hasTime = true }
         case .bill, .expiry:
             if date == nil { uncertain.insert("date") }
@@ -339,7 +370,13 @@ extension CaptureDraft {
             entry.category = entryKind == .transfer ? nil : category
             entry.account = account
             entry.toAccount = entryKind == .transfer ? toAccount : nil
+            entry.project = entryKind == .transfer ? nil : project
             return .ledger(entry)
+
+        case .refund:
+            guard let amount, let refundTarget else { return nil }
+            refundTarget.recordRefund(amount, on: date ?? now)
+            return .ledger(refundTarget)
 
         case .bill:
             guard let amount, let date else { return nil }

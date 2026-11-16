@@ -12,6 +12,8 @@ final class Note {
 
     @Relationship(deleteRule: .cascade, inverse: \NoteEntry.note)
     var entries: [NoteEntry]? = []
+    /// The project this note follows: its page shows what that has cost so far.
+    var project: Project?
 
     init(title: String) {
         self.title = title

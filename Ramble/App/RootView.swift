@@ -121,6 +121,7 @@ struct RootView: View {
             switch phase {
             case .active:
                 refreshDay()
+                recordDueEntries()
                 // Tasks ticked off on a widget while the app was closed.
                 WidgetBridge.applyPendingCompletions(context: AppSchema.shared.mainContext)
                 WidgetBridge.setNeedsRefresh()
@@ -162,7 +163,19 @@ extension RootView {
     /// Rebuilds the tabs when the date has moved on since they were built.
     fileprivate func refreshDay() {
         let today = Calendar.current.startOfDay(for: .now)
-        if today != day { day = today }
+        if today != day {
+            day = today
+            recordDueEntries()
+        }
+    }
+
+    /// 定期记账 that has come round. With iCloud on, after a moment: another device may have
+    /// recorded it already, and it's better to hear that than to make a copy to clean up.
+    fileprivate func recordDueEntries() {
+        Task {
+            if SyncMonitor.shared.isActive { try? await Task.sleep(for: .seconds(5)) }
+            RecurringEntries.recordDue(in: AppSchema.shared.mainContext)
+        }
     }
 
     /// What was shared from another app while this one was away, one at a time.

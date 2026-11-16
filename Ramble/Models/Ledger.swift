@@ -26,6 +26,8 @@ final class Account {
     var repaymentBills: [Bill]? = []
     @Relationship(deleteRule: .nullify, inverse: \Outstanding.account)
     var outstandings: [Outstanding]? = []
+    @Relationship(deleteRule: .nullify, inverse: \RecurringEntry.account)
+    var recurringEntries: [RecurringEntry]? = []
 
     init(name: String, kind: AccountKind, currencyCode: String = "CNY", initialBalance: Decimal = 0, sortOrder: Int = 0) {
         self.name = name
@@ -83,6 +85,8 @@ final class LedgerCategory {
     var bills: [Bill]? = []
     @Relationship(deleteRule: .nullify, inverse: \Outstanding.category)
     var outstandings: [Outstanding]? = []
+    @Relationship(deleteRule: .nullify, inverse: \RecurringEntry.category)
+    var recurringEntries: [RecurringEntry]? = []
 
     init(name: String, kind: CategoryKind, symbol: String, colorHex: String, sortOrder: Int = 0, seedKey: String? = nil) {
         self.name = name
@@ -105,6 +109,10 @@ final class LedgerEntry {
     var kindRaw: String = EntryKind.expense.rawValue
     /// Always positive; direction comes from `kind`.
     var amount: Decimal = 0
+    /// How much of an expense came back. Kept on the entry rather than as a record of its own, so
+    /// a refund takes the spending down where it happened and never counts as income.
+    var refundedAmount: Decimal = 0
+    var refundedAt: Date?
     var currencyCode: String = "CNY"
     /// 1 unit of `currencyCode` in the base currency at the time of recording.
     var rateToBase: Decimal = 1
@@ -119,6 +127,10 @@ final class LedgerEntry {
     var bill: Bill?
     /// The 应收 or 应付 this entry settled.
     var outstanding: Outstanding?
+    var project: Project?
+    /// The rule that recorded this, and which of its occurrences this is.
+    var recurring: RecurringEntry?
+    var occurrenceDate: Date?
     @Relationship(deleteRule: .cascade, inverse: \Attachment.entry)
     var attachments: [Attachment]? = []
 
@@ -141,22 +153,37 @@ final class LedgerEntry {
         EntrySource(rawValue: sourceRaw) ?? .manual
     }
 
-    var baseAmount: Decimal { amount * rateToBase }
+    /// What it comes to after any refund. Every total goes through this.
+    var netAmount: Decimal { max(0, amount - refundedAmount) }
+
+    var baseAmount: Decimal { netAmount * rateToBase }
+
+    /// Takes `refund` off this expense, up to what's left of it.
+    func recordRefund(_ refund: Decimal, on date: Date = .now) {
+        guard kind == .expense, refund > 0 else { return }
+        refundedAmount = min(amount, refundedAmount + refund)
+        refundedAt = date
+    }
+
+    func undoRefund() {
+        refundedAmount = 0
+        refundedAt = nil
+    }
 
     /// Search: the note, the category (or its parent), the accounts, text read from a receipt
     /// photo, or the amount itself (「35」 finds ¥35.00).
     func matches(_ query: String) -> Bool {
         let needle = query.trimmed.lowercased()
         guard !needle.isEmpty else { return true }
-        if let number = Decimal(string: needle.replacingOccurrences(of: ",", with: "")), number == amount { return true }
-        let words = [note, category?.name ?? "", category?.parent?.name ?? "", account?.name ?? "", toAccount?.name ?? ""]
+        if let number = Decimal(string: needle.replacingOccurrences(of: ",", with: "")), number == amount || number == netAmount { return true }
+        let words = [note, category?.name ?? "", category?.parent?.name ?? "", account?.name ?? "", toAccount?.name ?? "", project?.name ?? ""]
             + (attachments ?? []).map(\.recognizedText)
         return words.contains { $0.lowercased().contains(needle) }
     }
 
     /// Converts through the base currency: this entry's stored rate in, today's rate out.
     func amount(in code: String) -> Decimal {
-        if code == currencyCode { return amount }
+        if code == currencyCode { return netAmount }
         let base = UserDefaults.standard.string(forKey: AppSettings.baseCurrencyKey) ?? AppSettings.defaultBaseCurrency
         if code == base { return baseAmount }
         guard let rate = ExchangeRates.shared.rateToBase(code, base: base), rate > 0 else { return baseAmount }

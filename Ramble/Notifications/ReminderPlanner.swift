@@ -4,6 +4,8 @@ import Foundation
 nonisolated struct PlannedReminder: Equatable {
     enum Target: String {
         case task, bill, expiry, openApp
+        /// A 定期记账 waiting for a yes: its card is on the Today page.
+        case recurring
         /// The weekly or monthly report; `targetID` is "week" or "month".
         case report
     }
@@ -87,6 +89,14 @@ nonisolated enum ReminderPlanner {
             return PlannedReminder(target: .bill, targetID: id, fireDate: fireDate, title: "\(name) · \(when)", body: body,
                                    category: isEstimated ? Category.billEstimated : Category.bill, threadID: "bill-\(id)")
         }
+    }
+
+    /// On its day, for one that asks first.
+    static func recurringReminder(id: String, name: String, due: Date, amountText: String, now: Date,
+                                  calendar: Calendar = .current) -> PlannedReminder? {
+        guard let fireDate = ReminderRule(daysBefore: 0).fireDate(for: due, calendar: calendar), fireDate > now else { return nil }
+        return PlannedReminder(target: .recurring, targetID: id, fireDate: fireDate, title: String(localized: "\(name) · 到日子了"),
+                               body: String(localized: "\(amountText)，打开确认后记一笔"), category: "", threadID: "recurring-\(id)")
     }
 
     static func expiryReminders(id: String, name: String, expiry: Date, expiryText: String, renewable: Bool,

@@ -13,6 +13,7 @@ struct EntryEditorView: View {
 
     @Query(sort: \LedgerCategory.sortOrder) private var categories: [LedgerCategory]
     @Query(filter: #Predicate<Account> { !$0.isArchived }, sort: \Account.sortOrder) private var accounts: [Account]
+    @Query(filter: #Predicate<Project> { !$0.isFinished }, sort: \Project.createdAt, order: .reverse) private var projects: [Project]
 
     @State private var kind: EntryKind
     @State private var amountText: String
@@ -27,11 +28,14 @@ struct EntryEditorView: View {
     @State private var scanStatus: String?
     @State private var isScanning = false
     @State private var confirmDelete = false
+    @State private var project: Project?
+    @State private var isRefunding = false
     @FocusState private var amountFocused: Bool
 
     private var rates: ExchangeRates { .shared }
 
-    init(entry: LedgerEntry?, startsWithReceipt: Bool = false, onFinish: (() -> Void)? = nil) {
+    /// `project`: where a new entry goes, when it's started from that project's page.
+    init(entry: LedgerEntry?, startsWithReceipt: Bool = false, project: Project? = nil, onFinish: (() -> Void)? = nil) {
         self.entry = entry
         self.startsWithReceipt = startsWithReceipt
         self.onFinish = onFinish
@@ -46,6 +50,7 @@ struct EntryEditorView: View {
         _date = State(initialValue: entry?.date ?? .now)
         _note = State(initialValue: entry?.note ?? "")
         _photos = State(initialValue: DraftAttachment.drafts(from: entry?.attachments))
+        _project = State(initialValue: entry?.project ?? project)
     }
 
     var body: some View {
@@ -73,7 +78,8 @@ struct EntryEditorView: View {
 
             if kind != .transfer {
                 Section("分类") {
-                    CategoryGrid(categories: categories.filter { $0.kind == kind.categoryKind && $0.parent == nil }, selection: $category)
+                    CategoryGrid(categories: categories.filter { $0.kind == kind.categoryKind && $0.parent == nil },
+                                 kind: kind.categoryKind ?? .expense, selection: $category)
                 }
             }
 
@@ -86,7 +92,12 @@ struct EntryEditorView: View {
                 }
                 DatePicker("时间", selection: $date)
                 TextField("备注（如 午餐、地铁）", text: $note)
+                if kind != .transfer {
+                    ProjectField(selection: $project, projects: projects)
+                }
             }
+
+            refundSection
 
             currencySection
 
@@ -114,6 +125,12 @@ struct EntryEditorView: View {
                     .disabled(!canSave)
             }
         }
+        .sheet(isPresented: $isRefunding) {
+            if let entry {
+                NavigationStack { RefundView(entry: entry) }
+                    .presentationDetents([.medium, .large])
+            }
+        }
         .alert("删除这笔记录？", isPresented: $confirmDelete) {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
@@ -137,6 +154,31 @@ struct EntryEditorView: View {
         .task {
             await rates.refreshIfNeeded(base: baseCurrency)
             if rateText.isEmpty { fillRate(for: currencyCode) }
+        }
+    }
+
+    // MARK: - Refund
+
+    /// A saved expense only: until it's saved there is nothing to give back.
+    @ViewBuilder
+    private var refundSection: some View {
+        if let entry, entry.kind == .expense, kind == .expense {
+            Section {
+                if entry.refundedAmount > 0 {
+                    LabeledContent("已退款", value: entry.refundedAmount.money(entry.currencyCode))
+                    if let date = entry.refundedAt {
+                        LabeledContent("退款日期", value: DayText.dayWithWeekday(date))
+                    }
+                    Button("撤销退款", systemImage: "arrow.uturn.forward") { entry.undoRefund() }
+                }
+                if entry.netAmount > 0 {
+                    Button("记一笔退款…", systemImage: "arrow.uturn.backward") { isRefunding = true }
+                }
+            } footer: {
+                if entry.refundedAmount > 0 {
+                    Text("这笔按扣掉退款后的 \(entry.netAmount.money(entry.currencyCode)) 计算，退款不算收入。")
+                }
+            }
         }
     }
 
@@ -268,6 +310,8 @@ struct EntryEditorView: View {
         target.category = kind == .transfer ? nil : category
         target.account = account
         target.toAccount = kind == .transfer ? toAccount : nil
+        target.project = kind == .transfer ? nil : project
+        if kind != .expense { target.undoRefund() }
         DraftAttachment.sync(photos, replacing: target.attachments, in: context) { $0.entry = target }
         finish()
     }
@@ -279,7 +323,11 @@ struct EntryEditorView: View {
 
 struct CategoryGrid: View {
     let categories: [LedgerCategory]
+    /// What a category named on the spot (自定义) is.
+    let kind: CategoryKind
     @Binding var selection: LedgerCategory?
+
+    @State private var isNaming = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 5)
 
@@ -308,8 +356,27 @@ struct CategoryGrid: View {
                 .accessibilityLabel(Text(category.name))
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
+            // One the person names themselves.
+            Button {
+                isNaming = true
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 46, height: 46)
+                        .background(Color.secondary.opacity(0.12), in: .circle)
+                    Text("自定义")
+                        .font(.caption)
+                        .lineLimit(1)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
+        .newCategoryAlert(isPresented: $isNaming, kind: kind) { selection = $0 }
     }
 }
 

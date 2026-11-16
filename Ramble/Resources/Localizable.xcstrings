@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    " · 先问我" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · Asks first"
+          }
+        }
+      }
+    },
     " · 支付时填实际金额" : {
       "localizations" : {
         "en" : {
@@ -65,6 +75,26 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ · %2$@ 结清"
+          }
+        }
+      }
+    },
+    "%@ · 下次 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · Next %2$@"
+          }
+        }
+      }
+    },
+    "%@ · 到日子了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is due"
           }
         }
       }
@@ -855,6 +885,26 @@
         }
       }
     },
+    "%@，打开确认后记一笔" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Open the app to confirm and log it"
+          }
+        }
+      }
+    },
+    "%@，点一下确认" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Tap to confirm"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -953,6 +1003,16 @@
         }
       }
     },
+    "%lld 个进行中" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld in progress"
+          }
+        }
+      }
+    },
     "%lld 个问题" : {
       "localizations" : {
         "en" : {
@@ -990,6 +1050,28 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld attachments"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld 个项目" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld project"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld projects"
                 }
               }
             }
@@ -1275,6 +1357,28 @@
         }
       }
     },
+    "%lld 条定期记账" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recurring entry"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recurring entries"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld 条待办" : {
       "localizations" : {
         "en" : {
@@ -1436,6 +1540,28 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld entries"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld 笔 · 最近 %@" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld entry · Latest %2$@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld entries · Latest %2$@"
                 }
               }
             }
@@ -1877,6 +2003,36 @@
         }
       }
     },
+    "iCloud 同步会关掉，免得和 iCloud 里的记录重复。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync will be turned off, so this doesn't end up next to the records in iCloud."
+          }
+        }
+      }
+    },
+    "iCloud 同步已关闭，需要时可以在设置里重新打开；打开后两边的记录会合并，可能有重复。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync is now off. You can turn it back on in Settings; records from both places are then combined, which may leave duplicates."
+          }
+        }
+      }
+    },
+    "iCloud 同步开着：选「重新开始」，记录会从 iCloud 同步回来。从备份恢复会关掉 iCloud 同步，免得和 iCloud 里的记录重复。打不开的文件都会移到「文件 › 我的 iPhone › 随口记」，不会删除。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud Sync is on: choose Start Over and your records will sync back from iCloud. Restoring a backup turns iCloud Sync off, so it doesn't end up next to the records in iCloud. Either way, the files that won't open move to Files › On My iPhone › Ramble and aren't deleted."
+          }
+        }
+      }
+    },
     "iCloud 暂时繁忙，稍后会自动重试。" : {
       "localizations" : {
         "en" : {
@@ -2046,6 +2202,40 @@
         }
       }
     },
+    "screen.projects" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "项目"
+          }
+        }
+      },
+      "extractionState" : "extracted_with_value"
+    },
+    "screen.recurring" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recurring Entries"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "定期记账"
+          }
+        }
+      },
+      "extractionState" : "extracted_with_value"
+    },
     "tile.owed" : {
       "localizations" : {
         "en" : {
@@ -2118,6 +2308,16 @@
         }
       }
     },
+    "「%@」\n账目和笔记都会保留，只是不再属于这个项目。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”\nIts entries and notes will be kept, just no longer part of this project."
+          }
+        }
+      }
+    },
     "「%@」\n附带的图片和文件会一起删除，由它生成的待办会保留。" : {
       "localizations" : {
         "en" : {
@@ -2164,6 +2364,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The entry in “%@” with the attachment"
+          }
+        }
+      }
+    },
+    "一共花了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent So Far"
+          }
+        }
+      }
+    },
+    "一共花了 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spent so far: %@"
           }
         }
       }
@@ -2318,6 +2538,26 @@
         }
       }
     },
+    "下一次" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        }
+      }
+    },
+    "下一次：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next: %@"
+          }
+        }
+      }
+    },
     "下个月" : {
       "localizations" : {
         "en" : {
@@ -2428,12 +2668,32 @@
         }
       }
     },
+    "不关联项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Project"
+          }
+        }
+      }
+    },
     "不导入" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Don't Import"
+          }
+        }
+      }
+    },
+    "不属于项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Project"
           }
         }
       }
@@ -2804,6 +3064,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore from an Automatic Backup"
+          }
+        }
+      }
+    },
+    "从这笔支出里扣掉，不算收入。不是退款的话，把上面的类型改成「收入」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comes off this expense and doesn't count as income. If it isn't a refund, change the type above to Income."
           }
         }
       }
@@ -3426,6 +3696,16 @@
         }
       }
     },
+    "关联项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link to a Project"
+          }
+        }
+      }
+    },
     "关闭" : {
       "localizations" : {
         "en" : {
@@ -3498,6 +3778,16 @@
         }
       }
     },
+    "再试一次" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        }
+      }
+    },
     "写一条记录，或者点麦克风说" : {
       "localizations" : {
         "en" : {
@@ -3534,6 +3824,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Results in seconds. Good enough for expenses, to-dos and everyday notes."
+          }
+        }
+      }
+    },
+    "出错信息" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error Details"
           }
         }
       }
@@ -3604,6 +3904,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Category Budgets"
+          }
+        }
+      }
+    },
+    "创建" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create"
           }
         }
       }
@@ -3788,6 +4098,26 @@
         }
       }
     },
+    "删除这个项目？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this project?"
+          }
+        }
+      }
+    },
+    "删除这条定期记账？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this recurring entry?"
+          }
+        }
+      }
+    },
     "删除这条待办？" : {
       "localizations" : {
         "en" : {
@@ -3874,6 +4204,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Money others owe you and money you owe goes here first, without counting as income or spending. When it's paid, one tap logs it as income or an expense.\nYou can also just say “Sam still owes me 2,000” or “I owe the plumber 3,000 for labor”."
+          }
+        }
+      }
+    },
+    "到日子了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Due Now"
+          }
+        }
+      }
+    },
+    "到日子先问我" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Me First"
+          }
+        }
+      }
+    },
+    "到日子时提醒你，在「今天」页确认金额后才记一笔，适合金额不固定的。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminds you on the day, and logs it once you confirm the amount on the Today page. Good for amounts that vary."
+          }
+        }
+      }
+    },
+    "到日子自动记一笔，不用确认。没打开 App 的日子，下次打开时补上。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged by itself on the day, with no need to confirm. If you didn't open the app that day, it catches up next time."
           }
         }
       }
@@ -4622,6 +4992,16 @@
         }
       }
     },
+    "名称（如 工资、视频会员）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name (like Salary, Streaming)"
+          }
+        }
+      }
+    },
     "名称（如 护照、车险）" : {
       "localizations" : {
         "en" : {
@@ -4802,6 +5182,16 @@
         }
       }
     },
+    "图标和颜色可以在「设置 › 分类」里改。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can change its icon and color in Settings › Categories."
+          }
+        }
+      }
+    },
     "图片和文件" : {
       "localizations" : {
         "en" : {
@@ -4978,6 +5368,16 @@
         }
       }
     },
+    "备份于 %@，含 %@。打不开的文件会移到「文件 › 我的 iPhone › 随口记」，不会删除。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backed up %1$@, with %2$@. The files that won't open will move to Files › On My iPhone › Ramble and won't be deleted."
+          }
+        }
+      }
+    },
     "备份包含照片和文件" : {
       "localizations" : {
         "en" : {
@@ -5098,6 +5498,26 @@
         }
       }
     },
+    "如 兼职、房租收入" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Like Side Job, Rent Received"
+          }
+        }
+      }
+    },
+    "如 宠物、育儿" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Like Pets, Childcare"
+          }
+        }
+      }
+    },
     "如 工作、家庭" : {
       "localizations" : {
         "en" : {
@@ -5114,6 +5534,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "e.g. Sam, the plumber"
+          }
+        }
+      }
+    },
+    "如 装修、日本旅行" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Like Renovation, Japan Trip"
           }
         }
       }
@@ -5260,6 +5690,16 @@
         }
       }
     },
+    "定期记账" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recurring"
+          }
+        }
+      }
+    },
     "实际支付金额" : {
       "localizations" : {
         "en" : {
@@ -5328,6 +5768,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Import Entries"
+          }
+        }
+      }
+    },
+    "导出原文件" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export the Original Files"
           }
         }
       }
@@ -5432,6 +5882,16 @@
         }
       }
     },
+    "工资、订阅这类每期都有的收支，设好之后到日子自动记一笔，也可以先问你一声。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salary, subscriptions and other money that comes round regularly. Once set up, it's logged by itself on the day, or it can ask you first."
+          }
+        }
+      }
+    },
     "工资和季度奖金" : {
       "localizations" : {
         "en" : {
@@ -5528,6 +5988,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saved (…%@). Enter a new one to replace it."
+          }
+        }
+      }
+    },
+    "已全额退款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fully Refunded"
           }
         }
       }
@@ -5826,6 +6296,16 @@
         }
       }
     },
+    "已记一笔：%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged: %1$@ %2$@"
+          }
+        }
+      }
+    },
     "已超出月预算 %@" : {
       "localizations" : {
         "en" : {
@@ -5892,6 +6372,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Overdue"
+          }
+        }
+      }
+    },
+    "已退 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refunded %@"
+          }
+        }
+      }
+    },
+    "已退款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refunded"
           }
         }
       }
@@ -6346,12 +6846,32 @@
         }
       }
     },
+    "恢复" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        }
+      }
+    },
     "恢复失败，原有数据没有改动。%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restore failed; your existing data wasn't changed. %@"
+          }
+        }
+      }
+    },
+    "恢复进行" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen"
           }
         }
       }
@@ -6422,6 +6942,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Manually"
+          }
+        }
+      }
+    },
+    "手机上没有找到资料库的文件。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't find the library's files on this iPhone."
+          }
+        }
+      }
+    },
+    "手机存储空间不够时也会这样，腾出一些空间后再试。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This can also happen when the iPhone is out of space. Free some up and try again."
+          }
+        }
+      }
+    },
+    "打不开的文件会移到「文件 › 我的 iPhone › 随口记」，不会删除。iCloud 里的记录会同步回来。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The files that won't open will move to Files › On My iPhone › Ramble and won't be deleted. Your records in iCloud will sync back."
+          }
+        }
+      }
+    },
+    "打不开的文件会移到「文件 › 我的 iPhone › 随口记」，不会删除。随口记会从空白开始。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The files that won't open will move to Files › On My iPhone › Ramble and won't be deleted. Ramble will start empty."
+          }
+        }
+      }
+    },
+    "打不开的文件都会移到「文件 › 我的 iPhone › 随口记」，不会删除。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The files that won't open move to Files › On My iPhone › Ramble and aren't deleted."
+          }
+        }
+      }
+    },
+    "打不开的资料库 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Library That Wouldn't Open %@"
           }
         }
       }
@@ -6544,6 +7124,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send the Original to %@?"
+          }
+        }
+      }
+    },
+    "把打不开的文件存到「文件」留底。里面是你的全部记录，不要随便发给别人。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the files that won't open to Files, so you have a copy. They hold all your records, so be careful who you share them with."
           }
         }
       }
@@ -7026,6 +7616,16 @@
         }
       }
     },
+    "撤销退款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo Refund"
+          }
+        }
+      }
+    },
     "支付后自动记一笔支出" : {
       "localizations" : {
         "en" : {
@@ -7178,6 +7778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Received To"
+          }
+        }
+      }
+    },
+    "改名" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
           }
         }
       }
@@ -7546,6 +8156,16 @@
         }
       }
     },
+    "新建定期记账" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Recurring Entry"
+          }
+        }
+      }
+    },
     "新建应付" : {
       "localizations" : {
         "en" : {
@@ -7602,6 +8222,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New Account"
+          }
+        }
+      }
+    },
+    "新建项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Project"
+          }
+        }
+      }
+    },
+    "新建项目…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Project…"
           }
         }
       }
@@ -7906,6 +8546,26 @@
         }
       }
     },
+    "最多 %@。从这笔支出里扣掉，不算收入。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to %@. Comes off this expense and doesn't count as income."
+          }
+        }
+      }
+    },
+    "最多 %@。从这笔支出里扣掉，不算收入；%@的余额会加回来。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to %1$@. Comes off this expense and doesn't count as income; it goes back into %2$@."
+          }
+        }
+      }
+    },
     "最大一笔「%@」%@，占%@" : {
       "localizations" : {
         "en" : {
@@ -8176,6 +8836,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not Set"
+          }
+        }
+      }
+    },
+    "未选择" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Chosen"
           }
         }
       }
@@ -9110,6 +9780,16 @@
         }
       }
     },
+    "水电改造" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plumbing and Wiring"
+          }
+        }
+      }
+    },
     "水电改造完成，打压测试 0.8MPa 保压半小时没问题。开关插座的位置拍照留底了。" : {
       "localizations" : {
         "en" : {
@@ -9410,6 +10090,16 @@
         }
       }
     },
+    "添加" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
     "添加分类预算" : {
       "localizations" : {
         "en" : {
@@ -9536,6 +10226,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Source Code (Open Source)"
+          }
+        }
+      }
+    },
+    "灯具" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lights"
           }
         }
       }
@@ -9690,6 +10390,16 @@
         }
       }
     },
+    "瓷砖" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiles"
+          }
+        }
+      }
+    },
     "瓷砖到货了，一共 42 箱，有两块边角磕坏，商家答应补发。" : {
       "localizations" : {
         "en" : {
@@ -9756,6 +10466,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ask about your ledger, to-dos and notes in one sentence"
+          }
+        }
+      }
+    },
+    "用这个备份恢复？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore This Backup?"
           }
         }
       }
@@ -9882,6 +10602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Confirm Paid"
+          }
+        }
+      }
+    },
+    "确认退款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm Refund"
           }
         }
       }
@@ -10188,6 +10918,16 @@
         }
       }
     },
+    "结束项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish Project"
+          }
+        }
+      }
+    },
     "给 AI 的话（可不填）" : {
       "localizations" : {
         "en" : {
@@ -10294,6 +11034,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Edit Expiry Reminder"
+          }
+        }
+      }
+    },
+    "编辑定期记账" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Recurring Entry"
           }
         }
       }
@@ -10478,6 +11228,16 @@
         }
       }
     },
+    "自定义…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom…"
+          }
+        }
+      }
+    },
     "自定义接口" : {
       "localizations" : {
         "en" : {
@@ -10494,6 +11254,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The custom endpoint URL is invalid: it must start with https:// (services on your local network can use http://), for example https://api.deepseek.com/v1."
+          }
+        }
+      }
+    },
+    "自定义支出分类" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Expense Category"
+          }
+        }
+      }
+    },
+    "自定义收入分类" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Income Category"
           }
         }
       }
@@ -10528,6 +11308,16 @@
         }
       }
     },
+    "花在哪" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where It Went"
+          }
+        }
+      }
+    },
     "范围" : {
       "localizations" : {
         "en" : {
@@ -10558,6 +11348,26 @@
         }
       }
     },
+    "装修、旅行这类跨好几个分类的开销，放进一个项目就能看出一共花了多少。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put spending that crosses categories, like a renovation or a trip, into one project to see what it cost altogether."
+          }
+        }
+      }
+    },
+    "装修、旅行这类跨好几个分类的开销，放进一个项目就能看出一共花了多少。记账时选一个项目，或者点右上角 + 新建。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put spending that crosses categories, like a renovation or a trip, into one project to see what it cost altogether. Pick a project when you log an entry, or tap + at the top."
+          }
+        }
+      }
+    },
     "装修师傅" : {
       "localizations" : {
         "en" : {
@@ -10574,6 +11384,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Renovation Log"
+          }
+        }
+      }
+    },
+    "要到期提醒、付了才算的（信用卡、房租），放在「提醒 › 账单」更合适。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For things you want reminding about that only count once paid, like credit cards and rent, use Reminders › Bills."
           }
         }
       }
@@ -10718,6 +11538,16 @@
         }
       }
     },
+    "记一笔支出 ${amount}" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log an expense of ${amount}"
+          }
+        }
+      }
+    },
     "记一笔支出 %@" : {
       "localizations" : {
         "en" : {
@@ -10734,6 +11564,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Log Money Received…"
+          }
+        }
+      }
+    },
+    "记一笔退款…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log a Refund…"
           }
         }
       }
@@ -10814,6 +11654,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Logged At"
+          }
+        }
+      }
+    },
+    "记录还在手机上，只是随口记现在打不开。先不要删除 App，那样会把这些文件一起删掉。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your records are still on this iPhone, but Ramble can't open them right now. Don't delete the app yet: that would delete these files too."
           }
         }
       }
@@ -11260,6 +12110,16 @@
         }
       }
     },
+    "资料库打不开了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Open Your Library"
+          }
+        }
+      }
+    },
     "超出分类预算：%@" : {
       "localizations" : {
         "en" : {
@@ -11286,6 +12146,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Skip Already Logged"
+          }
+        }
+      }
+    },
+    "跳过这次" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip This Time"
           }
         }
       }
@@ -11570,6 +12440,16 @@
         }
       }
     },
+    "还没有定期记账" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Recurring Entries Yet"
+          }
+        }
+      }
+    },
     "还没有待办" : {
       "localizations" : {
         "en" : {
@@ -11620,12 +12500,32 @@
         }
       }
     },
+    "还没有账目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Entries Yet"
+          }
+        }
+      }
+    },
     "还没有重点。长按一条记录，选「标为重点」或「高亮某句话」。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No key points yet. Touch and hold an entry and choose “Mark as Key Point” or “Highlight a Sentence”."
+          }
+        }
+      }
+    },
+    "还没有项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Projects Yet"
           }
         }
       }
@@ -11800,6 +12700,16 @@
         }
       }
     },
+    "这是最后一次。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the last one."
+          }
+        }
+      }
+    },
     "这次付出" : {
       "localizations" : {
         "en" : {
@@ -11880,6 +12790,16 @@
         }
       }
     },
+    "这笔按扣掉退款后的 %@ 计算，退款不算收入。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This counts as %@ after the refund. The refund isn't income."
+          }
+        }
+      }
+    },
     "进行中" : {
       "localizations" : {
         "en" : {
@@ -11900,12 +12820,72 @@
         }
       }
     },
+    "退回多少" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount Refunded"
+          }
+        }
+      }
+    },
+    "退款" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refund"
+          }
+        }
+      }
+    },
+    "退款日期" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refund Date"
+          }
+        }
+      }
+    },
+    "退的是" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refund For"
+          }
+        }
+      }
+    },
+    "退的是哪一笔" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which Expense"
+          }
+        }
+      }
+    },
     "选一句话设提醒。会生成一条待办，到时间通知你，并和这句话关联。" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pick a sentence to set a reminder for. It creates a to-do that notifies you on time, linked to the sentence."
+          }
+        }
+      }
+    },
+    "选一笔要退款的支出" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the expense to refund"
           }
         }
       }
@@ -12022,6 +13002,16 @@
         }
       }
     },
+    "都已结束" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Finished"
+          }
+        }
+      }
+    },
     "里面的记录、图片和文件都会删除。由它生成的待办会保留。" : {
       "localizations" : {
         "en" : {
@@ -12048,6 +13038,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Repeat"
+          }
+        }
+      }
+    },
+    "重新开始" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Over"
+          }
+        }
+      }
+    },
+    "重新开始？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Over?"
           }
         }
       }
@@ -12342,6 +13352,16 @@
         }
       }
     },
+    "随口记原文件 %@.zip" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ramble Original Files %@.zip"
+          }
+        }
+      }
+    },
     "随口记备份 %@" : {
       "localizations" : {
         "en" : {
@@ -12358,6 +13378,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ramble Is Locked"
+          }
+        }
+      }
+    },
+    "随口记现在打不开资料库，请打开 App 看看。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ramble can't open its library right now. Please open the app to take a look."
           }
         }
       }
@@ -12428,6 +13458,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Face ID"
+          }
+        }
+      }
+    },
+    "项目" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project"
+          }
+        }
+      }
+    },
+    "项目名称" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project Name"
           }
         }
       }

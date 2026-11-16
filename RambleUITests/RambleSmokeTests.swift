@@ -43,6 +43,32 @@ final class RambleSmokeTests: XCTestCase {
         }
     }
 
+    /// A library that won't open shows a way out instead of crashing, and 取消 changes nothing.
+    @MainActor
+    func testABrokenLibraryOffersAWayOut() {
+        let app = launch("-testBrokenLibrary")
+        let page = app.navigationBars["资料库打不开了"].firstMatch
+        expect(page, "The recovery page didn't show")
+        XCTAssertFalse(tab(app, "今天").exists, "The app opened over a library that won't open")
+
+        app.buttons["再试一次"].firstMatch.tap()
+        expect(page, "再试一次 left the page while the library still won't open")
+
+        let startOver = app.buttons["重新开始"].firstMatch
+        startOver.tap()
+        let alert = app.alerts.firstMatch
+        expect(alert, "重新开始 didn't ask first")
+        alert.buttons["取消"].firstMatch.tap()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: timeout), "The alert didn't close")
+        XCTAssertTrue(page.exists, "取消 left the page")
+
+        startOver.tap()
+        expect(alert, "重新开始 didn't ask the second time")
+        alert.buttons["重新开始"].firstMatch.tap()
+        expect(tab(app, "今天"), "The app didn't open after starting over")
+        XCTAssertFalse(page.exists, "The recovery page stayed")
+    }
+
     /// Say something, read what AI made of it, save it, and find it in the ledger.
     @MainActor
     func testACaptureEndsUpInTheLedger() {
@@ -88,18 +114,51 @@ final class RambleSmokeTests: XCTestCase {
         expect(app.navigationBars["读取结果"].firstMatch, "The file wasn't read")
     }
 
-    /// The × on an attachment was so small that tapping it usually opened the picture instead.
+    /// The × on an attachment is centered on the corner badge: forgiving enough to hit cleanly,
+    /// without reaching into the middle of a small thumbnail where a tap should open the picture.
     @MainActor
     func testAnAttachmentsRemoveButtonIsEasyToHit() {
         let app = launch("-startTab", "today", "-testShareFile", "瓷砖质保单")
         let remove = app.buttons["移除"].firstMatch
         expect(remove, "The attachment has no ×")
-        XCTAssertGreaterThanOrEqual(remove.frame.width, 43.5)
-        XCTAssertGreaterThanOrEqual(remove.frame.height, 43.5)
+        XCTAssertGreaterThanOrEqual(remove.frame.width, 27.5)
+        XCTAssertGreaterThanOrEqual(remove.frame.height, 27.5)
+        XCTAssertLessThanOrEqual(remove.frame.width, 32)
 
-        // Off the glyph, towards the tile: where a thumb lands when it misses the corner.
+        // Slightly off the glyph towards the tile: where a thumb lands on the corner.
         remove.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.65)).tap()
         expect(app.buttons["整理"].firstMatch, "That opened the file instead of removing it")
+    }
+
+    /// On a 56×56 pending photo in the note composer (with the keyboard up), tapping the thumbnail
+    /// opens the photo viewer instead of triggering ×, and tapping × removes it.
+    @MainActor
+    func testPendingPhotoInNoteOpensOnTapAndRemovesOnCorner() {
+        let app = launch("-startTab", "notes", "-openNote", "体检复查", "-debugNotePhoto")
+        let photo = app.buttons["照片"].firstMatch
+        expect(photo, "The pending photo is missing")
+
+        let box = app.textViews["写一条记录，或者点麦克风说"].exists ? app.textViews["写一条记录，或者点麦克风说"].firstMatch
+                                                             : app.textFields["写一条记录，或者点麦克风说"].firstMatch
+        box.tap()
+        let hadSoftwareKeyboard = app.keyboards.firstMatch.waitForExistence(timeout: 2)
+
+        // Slightly upper-right of center: the old 44×44 × reached past (28, 28) and deleted the photo here.
+        photo.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.45)).tap()
+
+        let close = app.buttons["关闭"].firstMatch
+        expect(close, "Tapping the pending photo didn't open the viewer (or deleted it)")
+        if hadSoftwareKeyboard {
+            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: timeout), "The keyboard stayed over the viewer")
+        }
+        close.tap()
+        XCTAssertTrue(close.waitForNonExistence(timeout: timeout), "The photo viewer didn't close")
+        XCTAssertTrue(photo.exists, "The pending photo was removed instead of previewed")
+
+        let remove = app.buttons["移除"].firstMatch
+        expect(remove, "The pending photo has no ×")
+        remove.tap()
+        XCTAssertTrue(photo.waitForNonExistence(timeout: timeout), "Tapping × didn't remove the pending photo")
     }
 
     // MARK: Swiping an entry in a note
@@ -114,6 +173,31 @@ final class RambleSmokeTests: XCTestCase {
     private func entryInView(_ app: XCUIApplication, saying text: String) -> XCUIElement {
         let rows = app.cells.containing(NSPredicate(format: "label CONTAINS %@", text)).allElementsBoundByIndex
         return rows.first { $0.frame.minY > 150 && $0.frame.maxY < 650 } ?? app.cells.firstMatch
+    }
+
+    /// Scrolls the page in small steps until `element` is in the open part of it, clear of the bars,
+    /// the composer and the keyboard. One not loaded yet is taken to be further up, with a note's
+    /// older entries. Flicking would overshoot it.
+    @MainActor
+    private func bringIntoView(_ element: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        for _ in 1...20 {
+            // `isHittable` doesn't know about the composer: it says yes to a row behind it.
+            let keyboard = app.keyboards.firstMatch
+            let bottom = (keyboard.exists ? keyboard.frame.minY : window.frame.maxY) - 80
+            let revealsBelow: Bool
+            if element.exists, element.frame.midY > bottom {
+                revealsBelow = true
+            } else if !element.exists || element.frame.midY < 140 {
+                revealsBelow = false
+            } else {
+                return
+            }
+            let (from, to) = revealsBelow ? (0.4, 0.25) : (0.25, 0.4)
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: from))
+                .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: to)))
+            sleep(1)
+        }
     }
 
     /// A short drag that shows the actions on one side without running them.
@@ -182,6 +266,7 @@ final class RambleSmokeTests: XCTestCase {
             // It stays up after a swipe action. Tapping the box again would bring up the text menu.
             if !app.keyboards.firstMatch.exists { box.tap() }
             expect(app.keyboards.firstMatch, "The keyboard didn't come up (round \(round))")
+            bringIntoView(cell, in: app)
             showActions(of: cell, fromLeading: true)
             let mark = app.buttons["重点"].firstMatch
             expect(mark, "重点 didn't show (round \(round))")
@@ -218,10 +303,7 @@ final class RambleSmokeTests: XCTestCase {
         expect(entry(app, saying: "第 30 条记录"), "The page didn't open at the end")
 
         let photo = app.buttons["照片"].firstMatch
-        for _ in 1...10 {
-            if photo.exists, photo.isHittable { break }
-            app.windows.firstMatch.swipeDown()
-        }
+        bringIntoView(photo, in: app)
         XCTAssertTrue(photo.exists && photo.isHittable, "The note's photo is missing")
         sleep(1)
         let before = photo.frame.minY
@@ -503,6 +585,154 @@ final class RambleSmokeTests: XCTestCase {
         checkDeleting(app, saying: "餐饮", confirms: false)
     }
 
+    @MainActor
+    func testDeletingAProjectAsksFirst() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        let projects = app.staticTexts["项目"].firstMatch
+        expect(projects, "项目 is missing")
+        projects.tap()
+        checkDeleting(app, saying: "装修")
+    }
+
+    @MainActor
+    private func openRecurringEntries(_ app: XCUIApplication) {
+        let manage = app.buttons["管理"].firstMatch
+        expect(manage, "管理 is missing")
+        manage.tap()
+        let recurring = app.buttons["定期记账"].firstMatch
+        expect(recurring, "管理 has no 定期记账")
+        recurring.tap()
+    }
+
+    @MainActor
+    func testDeletingARecurringEntryAsksFirst() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        openRecurringEntries(app)
+        checkDeleting(app, saying: "工资")
+    }
+
+    // MARK: Refunds, projects and recurring entries
+
+    /// An expense swiped right: the money comes off it.
+    @MainActor
+    func testARefundComesOffTheExpense() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        let cell = entry(app, saying: "午餐")
+        expect(cell, "The entry is missing")
+        // Up off the capture bar.
+        let list = app.collectionViews.firstMatch
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+            .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+        sleep(1)
+
+        showActions(of: cell, fromLeading: true)
+        let refund = app.buttons["退款"].firstMatch
+        expect(refund, "退款 didn't show")
+        refund.tap()
+        let confirm = app.buttons["确认退款"].firstMatch
+        expect(confirm, "The refund page didn't open")
+        confirm.tap()
+        expect(cell.staticTexts["已全额退款"].firstMatch, "The entry doesn't say it was refunded")
+    }
+
+    @MainActor
+    func testAProjectAddsUpAcrossCategories() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        let projects = app.staticTexts["项目"].firstMatch
+        expect(projects, "项目 is missing")
+        projects.tap()
+        let project = app.staticTexts["装修"].firstMatch
+        expect(project, "The project isn't listed")
+        project.tap()
+        expect(app.staticTexts["一共花了"].firstMatch, "The project's page didn't open")
+        expect(app.staticTexts["花在哪"].firstMatch, "The project doesn't say where it went")
+        expect(app.staticTexts["灯具"].firstMatch, "The project's entries are missing")
+    }
+
+    @MainActor
+    func testANoteShowsWhatItsProjectCost() {
+        let app = launch("-startTab", "notes", "-openNote", "装修记录")
+        expect(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "一共花了")).firstMatch,
+               "The note doesn't show what its project cost")
+    }
+
+    /// One that asks first waits on 今天 for a yes, then goes into the ledger.
+    @MainActor
+    func testARecurringEntryThatAsksFirstWaitsOnToday() {
+        let app = launch("-startTab", "today", "-ledger.grouping", "date", "-testDueRecurring")
+        let row = app.staticTexts["物业费"].firstMatch
+        expect(row, "It isn't waiting on 今天")
+        row.tap()
+        let record = app.buttons["记一笔"].firstMatch
+        expect(record, "The page to confirm it didn't open")
+        record.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: timeout), "It's still waiting after being recorded")
+
+        tab(app, "账本").tap()
+        expect(app.cells.containing(NSPredicate(format: "label CONTAINS %@", "物业费")).firstMatch, "It didn't reach the ledger")
+    }
+
+    /// Said out loud: it finds the expense it gives back, and adds nothing to the ledger.
+    @MainActor
+    func testASpokenRefundFindsTheExpense() {
+        let app = launch("-startTab", "today", "-debugCaptureText", "运动鞋退款 268")
+        let bar = app.buttons["快速记录"].firstMatch
+        expect(bar, "The capture bar is missing")
+        bar.tap()
+        let tidy = app.buttons["整理"].firstMatch
+        expect(tidy, "整理 is missing")
+        tidy.tap()
+        expect(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "退款")).firstMatch, "It wasn't read as a refund")
+        expect(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "运动鞋 ·")).firstMatch, "It didn't find the expense")
+    }
+
+    /// 自定义 in 记一笔: name a category there and then, and it's picked.
+    @MainActor
+    func testACategoryNamedWhileRecording() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        let add = app.buttons["记一笔"].firstMatch
+        expect(add, "记一笔 is missing")
+        add.tap()
+        expect(app.keyboards.firstMatch, "The amount isn't being asked for")
+        app.typeText("58")
+
+        let custom = app.buttons["自定义"].firstMatch
+        expect(custom, "自定义 is missing")
+        custom.tap()
+        let field = app.alerts.textFields.firstMatch
+        expect(field, "The name isn't being asked for")
+        field.typeText("宠物")
+        app.alerts.buttons["添加"].firstMatch.tap()
+
+        let pets = app.buttons["宠物"].firstMatch
+        expect(pets, "The new category isn't there")
+        XCTAssertTrue(pets.isSelected, "The new category isn't picked")
+        app.buttons["保存"].firstMatch.tap()
+        expect(app.cells.containing(NSPredicate(format: "label CONTAINS %@", "宠物")).firstMatch, "The entry isn't in the ledger under it")
+    }
+
+    /// 自定义… at the end of a category menu (定期记账, 账单, 应收应付, 整理结果).
+    @MainActor
+    func testACategoryNamedFromAMenu() {
+        let app = launch("-startTab", "ledger", "-ledger.grouping", "date")
+        openRecurringEntries(app)
+        let salary = app.staticTexts["工资"].firstMatch
+        expect(salary, "The salary rule is missing")
+        salary.tap()
+
+        let menu = app.buttons["工资"].firstMatch
+        expect(menu, "The category menu is missing")
+        menu.tap()
+        let custom = app.buttons["自定义…"].firstMatch
+        expect(custom, "The menu has no 自定义…")
+        custom.tap()
+        let field = app.alerts.textFields.firstMatch
+        expect(field, "The name isn't being asked for")
+        field.typeText("兼职")
+        app.alerts.buttons["添加"].firstMatch.tap()
+        expect(app.buttons["兼职"].firstMatch, "The new category isn't picked")
+    }
+
     /// A real notification, tapped on the home screen: opening one like this used to crash.
     @MainActor
     func testTappingAReminderShowsTheToDo() {
@@ -529,6 +759,7 @@ final class RambleSmokeTests: XCTestCase {
         let app = launch("-startTab", "notes", "-openNote", "装修记录")
         let photo = app.buttons["照片"].firstMatch
         expect(photo, "The note's photo is missing")
+        bringIntoView(photo, in: app)
         photo.tap()
 
         let close = app.buttons["关闭"].firstMatch

@@ -20,7 +20,7 @@ Say it once and it's kept. Ramble turns what you say into to-dos, ledger entries
 
 - **一句话，自动整理**：「明天下午三点交房租 3200，中午吃饭花了 35」会变成一条待办、一个账单提醒和一笔支出，确认后才保存
 - **待办**：截止时间、提醒、重复、子任务、优先级
-- **账本**：多账户、多币种（自动汇率）、分类、预算、统计图表、应收应付，导入微信支付、支付宝和其他 App 的 CSV
+- **账本**：多账户、多币种（自动汇率）、分类、预算、统计图表、应收应付、项目、退款、定期记账，导入微信支付、支付宝和其他 App 的 CSV
 - **账单和到期**：信用卡、房租、订阅、证件、保险、合同，到期前提醒
 - **笔记**：按时间追加的记录，AI 理顺语句、标重点、给某句话设提醒，照片和文件里的字也能搜索
 - **AI 读文件**：体检报告、合同、保修卡、发票，在手机上识别文字后总结要点，并建议复查、续期等提醒
@@ -91,7 +91,7 @@ scripts/build.sh uitest  # 界面测试，约 2 分钟
 
 测试默认按简体中文环境写（解析的是中文口语）。语音模型的端到端测试需要在真机上、先下载好模型才会运行。界面测试走一遍启动、记一笔、分享进来的文字、点提醒通知、打开照片、账本按分类、问一问，用内存里的示例数据，不改模拟器里已有的记录。
 
-Debug 版的启动参数：`-sampleData`（载入示例数据）、`-inMemoryStore`（数据只放内存）、`-mockAI`（不用模型，返回固定的整理结果）、`-startTab ledger`（打开某个标签页）、`-openNote 装修记录`、`-openAsk`、`-openLink ramble://…`、`-debugCaptureText …`（预填「记一下」）、`-testReminder 待办名称`（几秒后发这条待办的提醒）、`-testShare 这段话`、`-testShareFile 文件内容`（当作刚从分享面板收到）、`-testLongNote`（「装修记录」多 30 条记录，页面能滚动）。
+Debug 版的启动参数：`-sampleData`（载入示例数据）、`-inMemoryStore`（数据只放内存）、`-mockAI`（不用模型，返回固定的整理结果）、`-startTab ledger`（打开某个标签页）、`-openNote 装修记录`、`-openAsk`、`-openLink ramble://…`、`-debugCaptureText …`（预填「记一下」）、`-testReminder 待办名称`（几秒后发这条待办的提醒）、`-testShare 这段话`、`-testShareFile 文件内容`（当作刚从分享面板收到）、`-testLongNote`（「装修记录」多 30 条记录，页面能滚动）、`-testDueRecurring`（一条到日子、要先确认的定期记账）、`-testBrokenLibrary`（资料库打不开，显示恢复页）。
 
 商店截图用 `scripts/screenshots.sh` 重拍（中英文，6.9 和 6.3 英寸），放在 `docs/screenshots/`。先运行一次 `scripts/build.sh sim`。
 

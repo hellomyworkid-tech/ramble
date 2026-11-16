@@ -91,6 +91,11 @@ nonisolated enum MockCapture {
     static func capture(for input: String, now: Date) -> ParsedCapture {
         if input.contains("装修") { return renovation(now: now, english: false) }
         if input.contains("Renovation") { return renovation(now: now, english: true) }
+        if input.contains("退款") {
+            var refund = ParsedItem()
+            refund.type = "income"; refund.title = "运动鞋退款"; refund.amount = "268"
+            return ParsedCapture(items: [refund])
+        }
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

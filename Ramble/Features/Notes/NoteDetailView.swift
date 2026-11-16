@@ -27,6 +27,8 @@ struct NoteDetailView: View {
     @State private var confirmDeleteEntry: NoteEntry?
     @State private var showsImportantOnly = false
     @State private var hasOpened = false
+    @State private var isNamingProject = false
+    @AppStorage(AppSettings.baseCurrencyKey) private var baseCurrency = AppSettings.defaultBaseCurrency
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -39,6 +41,23 @@ struct NoteDetailView: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+
+                if let project = note.project {
+                    Section {
+                        NavigationLink {
+                            ProjectDetailView(project: project)
+                        } label: {
+                            HStack {
+                                Label(project.name, systemImage: "folder")
+                                Spacer(minLength: 8)
+                                Text("一共花了 \(project.spent.money(baseCurrency))")
+                                    .font(.subheadline)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
 
                 if note.sortedEntries.isEmpty {
                     Section {
@@ -108,6 +127,15 @@ struct NoteDetailView: View {
                 hasOpened = true
                 if let last = note.sortedEntries.last { proxy.scrollTo(last.persistentModelID, anchor: .bottom) }
                 if note.sortedEntries.isEmpty { composerFocused = note.title.isEmpty == false }
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-debugNotePhoto") {
+                    let jpeg = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 120)).jpegData(withCompressionQuality: 0.8) { ctx in
+                        UIColor.systemTeal.setFill()
+                        ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 120))
+                    }
+                    pending.append(.image(full: jpeg, thumbnail: jpeg))
+                }
+                #endif
             }
         }
         .navigationTitle(note.displayTitle)
@@ -115,6 +143,9 @@ struct NoteDetailView: View {
         // The composer takes the bottom edge, like a conversation; the tab bar and its capture bar step aside.
         .toolbarVisibility(.hidden, for: .tabBar)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NoteProjectMenu(note: note, isNaming: $isNamingProject)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(showsImportantOnly ? "显示全部记录" : "只看重点", systemImage: showsImportantOnly ? "star.fill" : "star") {
                     withAnimation { showsImportantOnly.toggle() }
@@ -127,6 +158,7 @@ struct NoteDetailView: View {
                 }
             }
         }
+        .newProjectAlert(isPresented: $isNamingProject) { note.project = $0 }
         .attachmentPickers(state: $picker) { pending.append($0) }
         .attachmentPreview($preview)
         .transientMessage($photoMessage)
@@ -291,10 +323,15 @@ struct NoteDetailView: View {
                             .disabled(isOrganizing || recorder.state != .idle)
                         }
                         ForEach(pending) { item in
-                            AttachmentTile(kind: item.kind, thumbnail: item.thumbnail, fileName: item.fileName, size: 56)
-                                .tileRemoveButton {
-                                    pending.removeAll { $0.id == item.id }
-                                }
+                            Button {
+                                preview = .forDraft(item, in: $pending)
+                            } label: {
+                                AttachmentTile(kind: item.kind, thumbnail: item.thumbnail, fileName: item.fileName, size: 56)
+                            }
+                            .buttonStyle(.plain)
+                            .tileRemoveButton {
+                                withAnimation { pending.removeAll { $0.id == item.id } }
+                            }
                         }
                     }
                     .padding(.top, AttachmentTile.removeOutset)

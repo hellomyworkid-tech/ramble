@@ -48,7 +48,7 @@ struct PaymentAmountTests {
 /// A payment recorded with nobody looking.
 @MainActor
 struct PaymentEntryTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func library() throws -> ModelContext {
         let context = container.mainContext
@@ -181,7 +181,7 @@ struct ShareInboxTests {
 /// What goes in the system's search.
 @MainActor
 struct SpotlightRecordTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func library() throws -> ModelContext {
         let context = container.mainContext

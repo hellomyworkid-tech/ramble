@@ -104,8 +104,7 @@ struct CategoryLedgerView: View {
     let baseCurrency: String
 
     @Query private var entries: [LedgerEntry]
-    @State private var editingEntry: LedgerEntry?
-    @State private var confirmDelete: LedgerEntry?
+    @State private var actions = EntryActions()
 
     init(kind: EntryKind, category: LedgerCategory?, interval: DateInterval, periodTitle: String, baseCurrency: String) {
         self.kind = kind
@@ -139,7 +138,7 @@ struct CategoryLedgerView: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            EntriesByDay(entries: shown, baseCurrency: baseCurrency, totalKind: kind, confirmDelete: $confirmDelete) { editingEntry = $0 }
+            EntriesByDay(entries: shown, baseCurrency: baseCurrency, totalKind: kind, actions: $actions)
         }
         .overlay {
             if shown.isEmpty {
@@ -147,25 +146,20 @@ struct CategoryLedgerView: View {
             }
         }
         .deletionUndoBar()
-        .entryDeletionAlert($confirmDelete)
+        .entryActions($actions)
         .navigationTitle(kind == .transfer ? String(localized: EntryKind.transfer.title) : category?.name ?? String(localized: "未分类"))
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $editingEntry) { entry in
-            NavigationStack { EntryEditorView(entry: entry) }
-        }
     }
 }
 
-/// Entries in one section per day, newest first: tap one to edit it, swipe to delete (it asks
-/// first, then there's 撤销). Each day's header adds up its entries of `totalKind`, and names the
+/// Entries in one section per day, newest first: tap one to edit it, swipe left to delete (it asks
+/// first, then there's 撤销), swipe an expense right to record a refund. Each day's header adds up its entries of `totalKind`, and names the
 /// year when it isn't this one (search results reach back years).
 struct EntriesByDay: View {
     let entries: [LedgerEntry]
     let baseCurrency: String
     var totalKind = EntryKind.expense
-    /// Set by 删除. The list this is in shows the question, with `entryDeletionAlert`.
-    @Binding var confirmDelete: LedgerEntry?
-    let onEdit: (LedgerEntry) -> Void
+    @Binding var actions: EntryActions
 
     var body: some View {
         let byDay = Dictionary(grouping: entries) { Calendar.current.startOfDay(for: $0.date) }
@@ -174,9 +168,15 @@ struct EntriesByDay: View {
                 ForEach(byDay[day] ?? []) { entry in
                     EntryRow(entry: entry, baseCurrency: baseCurrency)
                         .contentShape(.rect)
-                        .onTapGesture { onEdit(entry) }
+                        .onTapGesture { actions.editing = entry }
                         .swipeActions(allowsFullSwipe: false) {
-                            SwipeDeleteButton { confirmDelete = entry }
+                            SwipeDeleteButton { actions.confirmDelete = entry }
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            if entry.kind == .expense, entry.netAmount > 0 {
+                                Button("退款", systemImage: "arrow.uturn.backward") { actions.refunding = entry }
+                                    .tint(ModuleColor.money)
+                            }
                         }
                 }
             } header: {
@@ -198,24 +198,39 @@ struct EntriesByDay: View {
     }
 }
 
+/// What the rows of `EntriesByDay` ask for. The list they're in shows it, with `entryActions`:
+/// `EntriesByDay` is only rows, with no one view of its own to hang a sheet on.
+struct EntryActions {
+    var editing: LedgerEntry?
+    var refunding: LedgerEntry?
+    var confirmDelete: LedgerEntry?
+}
+
 extension View {
-    /// What 删除 in `EntriesByDay` asks, for the list it's in: `EntriesByDay` is only rows.
-    func entryDeletionAlert(_ entry: Binding<LedgerEntry?>) -> some View {
-        modifier(EntryDeletionAlert(entry: entry))
+    func entryActions(_ actions: Binding<EntryActions>) -> some View {
+        modifier(EntryActionsModifier(actions: actions))
     }
 }
 
-private struct EntryDeletionAlert: ViewModifier {
-    @Binding var entry: LedgerEntry?
+private struct EntryActionsModifier: ViewModifier {
+    @Binding var actions: EntryActions
     @Environment(\.modelContext) private var context
 
     func body(content: Content) -> some View {
-        content.deletionAlert(String(localized: "删除这笔记录？"), item: $entry) { entry in
-            Button("删除", role: .destructive) {
-                PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(entry.displayTitle)」"), in: context)
+        content
+            .sheet(item: $actions.editing) { entry in
+                NavigationStack { EntryEditorView(entry: entry) }
             }
-        } message: { entry in
-            Text("「\(entry.displayTitle + " " + entry.amount.money(entry.currencyCode))」")
-        }
+            .sheet(item: $actions.refunding) { entry in
+                NavigationStack { RefundView(entry: entry) }
+                    .presentationDetents([.medium, .large])
+            }
+            .deletionAlert(String(localized: "删除这笔记录？"), item: $actions.confirmDelete) { entry in
+                Button("删除", role: .destructive) {
+                    PendingDeletion.shared.delete([entry], message: String(localized: "已删除「\(entry.displayTitle)」"), in: context)
+                }
+            } message: { entry in
+                Text("「\(entry.displayTitle + " " + entry.amount.money(entry.currencyCode))」")
+            }
     }
 }

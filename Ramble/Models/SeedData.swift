@@ -174,6 +174,31 @@ enum SeedData {
         }
         renovation.updatedAt = day(-1, 20)
 
+        // What the renovation has cost, across categories and months.
+        let renovationProject = Project(name: String(localized: "装修"))
+        context.insert(renovationProject)
+        renovation.project = renovationProject
+        let renovationCosts: [(Int, String, Decimal, String, AccountKind)] = [
+            (-45, "housing", 5200, String(localized: "水电改造"), .debitCard),
+            (-38, "housing", 3200, String(localized: "瓷砖"), .debitCard),
+            (-36, "shopping", 860, String(localized: "灯具"), .creditCard),
+        ]
+        for (offset, key, amount, note, kind) in renovationCosts {
+            let cost = LedgerEntry(kind: .expense, amount: amount, currencyCode: currency, date: day(offset, 15), note: note)
+            context.insert(cost)
+            cost.category = category(key)
+            cost.account = account(kind)
+            cost.project = renovationProject
+        }
+
+        // The salary comes in by itself.
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: now.startOfMonth(calendar: calendar)) ?? now
+        let salaryRule = RecurringEntry(kind: .income, name: String(localized: "工资"), amount: 12000, currencyCode: currency,
+                                        nextDate: nextMonth, recurrence: Recurrence.monthly().normalized(anchor: nextMonth))
+        context.insert(salaryRule)
+        salaryRule.category = category("salary")
+        salaryRule.account = account(.debitCard)
+
         let checkup = Note(title: String(localized: "体检复查"))
         context.insert(checkup)
         let checkupSentence = String(localized: "体检报告出来了，甘油三酯偏高 2.1，医生说注意饮食，三个月后复查血脂。")
@@ -245,6 +270,8 @@ enum SeedData {
     }
 
     static func deleteAll(_ context: ModelContext) {
+        try? context.delete(model: RecurringEntry.self)
+        try? context.delete(model: Project.self)
         try? context.delete(model: Attachment.self)
         try? context.delete(model: NoteEntry.self)
         try? context.delete(model: Note.self)

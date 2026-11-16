@@ -5,7 +5,7 @@ import Testing
 
 @MainActor
 struct LedgerSummaryTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
     private let calendar = Calendar.current
 
     private func date(_ month: Int, _ day: Int, hour: Int = 12) -> Date {
@@ -89,7 +89,7 @@ struct CaptureIntentTests {
 
 @MainActor
 struct WidgetBridgeTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func date(_ day: Int, _ hour: Int = 12) -> Date {
         Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!

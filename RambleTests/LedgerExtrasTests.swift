@@ -137,7 +137,7 @@ struct ReceiptScannerTests {
 }
 
 struct AttachmentTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     @Test func photoEditsSyncAndCascadeWithTheEntry() throws {
         let context = container.mainContext
@@ -201,7 +201,7 @@ struct AttachmentTests {
 }
 
 struct CategoryTotalTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     private func entry(_ amount: Decimal, _ category: LedgerCategory?, in context: ModelContext) -> LedgerEntry {
         let entry = LedgerEntry(kind: .expense, amount: amount, currencyCode: "CNY")
@@ -238,7 +238,7 @@ struct CategoryTotalTests {
 }
 
 struct SearchAndUndoTests {
-    private let container = AppSchema.makeContainer(inMemory: true)
+    private let container = AppSchema.inMemoryContainer()
 
     /// 账本 search reaches the note, the category and its parent, the accounts, a receipt's text,
     /// and the amount itself.

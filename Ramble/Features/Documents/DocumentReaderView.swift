@@ -18,6 +18,9 @@ struct DocumentReaderView: View {
     @Query(filter: #Predicate<ExpiryItem> { !$0.isArchived }) private var expiries: [ExpiryItem]
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }) private var openTasks: [TaskItem]
+    @Query(filter: #Predicate<Project> { !$0.isFinished }, sort: \Project.createdAt, order: .reverse) private var projects: [Project]
+    /// Spending a refund in the file may be for, looked up when it's read.
+    @State private var recentExpenses: [LedgerEntry] = []
 
     private enum Phase {
         case picking, recognizing, poorText, reading, review, failed
@@ -77,7 +80,7 @@ struct DocumentReaderView: View {
         }
         .navigationDestination(item: $editingDraft) { id in
             if let index = drafts.firstIndex(where: { $0.id == id }) {
-                DraftEditorView(draft: $drafts[index], categories: categories, accounts: accounts, notes: notes)
+                DraftEditorView(draft: $drafts[index], categories: categories, accounts: accounts, notes: notes, projects: projects, expenses: recentExpenses)
             }
         }
         .navigationDestination(isPresented: $showsAISettings) {
@@ -379,9 +382,10 @@ struct DocumentReaderView: View {
             defer { elapsed = ContinuousClock.now - started }
             let outcome = try await DocumentReader.read(documentFiles, context: makeContext(), noteTitle: destination.noteTitle,
                                                         usesOriginals: usingOriginals, request: request)
+            recentExpenses = RefundCues.candidates(in: context)
             var parsed = outcome.capture.items.map { item in
                 var draft = CaptureDraft(item: item, categories: categories, accounts: accounts, baseCurrency: baseCurrency)
-                draft.linkExisting(bills: bills, expiries: expiries, notes: notes, tasks: openTasks)
+                draft.linkExisting(bills: bills, expiries: expiries, notes: notes, tasks: openTasks, projects: projects, expenses: recentExpenses)
                 return draft
             }
             DocumentImport.prepare(&parsed, for: destination)

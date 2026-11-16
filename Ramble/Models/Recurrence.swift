@@ -47,6 +47,15 @@ nonisolated struct Recurrence: Codable, Hashable {
         return copy
     }
 
+    /// After the next date moved: a monthly rule's day moves with it, or 「每月 6 日」 would pull a
+    /// bill due on the 15th back to the 6th after the first payment. 「最后一天」 stays as it is.
+    func following(_ date: Date, calendar: Calendar = .current) -> Recurrence {
+        guard frequency == .monthly, monthDay != Self.lastDayOfMonth else { return self }
+        var copy = self
+        copy.monthDay = calendar.component(.day, from: date)
+        return copy
+    }
+
     /// The occurrence that follows `current`, keeping its time of day.
     /// Returns nil once the rule has ended.
     func nextOccurrence(after current: Date, calendar: Calendar = .current) -> Date? {
